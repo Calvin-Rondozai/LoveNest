@@ -1,8 +1,9 @@
 import { ReactNode } from 'react';
-import { View, Text, Image, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { View, Text, Image, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from './Icon';
+import { KeyboardSafe } from './KeyboardSafe';
 import { useTheme } from '../context/ThemeContext';
 import { font, radii, spacing, primary } from '../theme';
 
@@ -21,8 +22,8 @@ export const AuthLayout = ({ title, subtitle, showBack, headerIcon, children }: 
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.bg }]}>
-      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <KeyboardSafe>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
           {showBack ? (
             <Pressable
               onPress={() => navigation.goBack()}
@@ -52,7 +53,7 @@ export const AuthLayout = ({ title, subtitle, showBack, headerIcon, children }: 
 
           {children}
         </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 };

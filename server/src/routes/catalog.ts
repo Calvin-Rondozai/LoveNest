@@ -11,7 +11,7 @@ import type { AppEnv } from '../app.js';
 /** Public catalog for the app. Hidden products are never returned here. */
 export const catalogRoutes = new Hono<AppEnv>()
   .get('/config', (c) =>
-    c.json({ deliveryFeeCents: env.DELIVERY_FEE_CENTS, legalVersion: env.LEGAL_VERSION, payments: paynowMode, mobileMoney: ['ecocash', 'onemoney'] }),
+    c.json({ deliveryFeeCents: env.DELIVERY_FEE_CENTS, legalVersion: env.LEGAL_VERSION, payments: paynowMode, mobileMoney: ['ecocash'] }),
   )
   .get('/categories', async (c) => {
     const rows = await db.select().from(category).orderBy(asc(category.sortOrder));

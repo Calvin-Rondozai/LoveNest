@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import { newIdempotencyKey } from '../lib/api';
 
-export type PaymentMethod = 'ecocash' | 'onemoney' | 'cod';
+export type PaymentMethod = 'ecocash';
+
+/** Delivery is Mutare-only for now; the city field is fixed, not chosen by the customer. */
+export const DELIVERY_CITY = 'Mutare';
 
 type CheckoutDraft = {
   recipientName: string;
@@ -28,7 +31,7 @@ const initialDraft = (): CheckoutDraft => ({
   recipientPhone: '',
   address: '',
   apartment: '',
-  city: '',
+  city: DELIVERY_CITY,
   instructions: '',
   giftMessage: '',
   paymentMethod: 'ecocash',

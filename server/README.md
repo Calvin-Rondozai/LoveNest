@@ -10,7 +10,7 @@ The backend for the LoveNest mobile app and admin dashboard: accounts, products,
 | Database | Turso (libSQL / SQLite) via Drizzle ORM; a local SQLite file in development |
 | Email | Resend |
 | Photos | Cloudinary |
-| Payments | Paynow (EcoCash, OneMoney) |
+| Payments | Paynow (EcoCash) |
 | Hosting | Render free web service + UptimeRobot |
 
 ## What it does
@@ -19,7 +19,7 @@ The backend for the LoveNest mobile app and admin dashboard: accounts, products,
 - **Admin users API**: list, create (with a temporary password the user must change), rename, change role, suspend or reactivate (signs them out), delete. You can never remove your own admin access or the last admin.
 - **Catalog**: public categories and visible products for the app; admins create, edit, hide and delete products and upload photos (type checked by file signature, max 5 MB, stored on Cloudinary).
 - **Checkout**: prices, totals and stock come from the database only. Stock is reserved in the same transaction as the order, so the last item can't be sold twice. Every checkout carries an idempotency key, so a retry never creates a second order.
-- **Payments**: EcoCash and OneMoney through Paynow express checkout. An order is only marked paid after a hash-verified Paynow message with the exact amount. Cash on delivery is marked paid when delivered.
+- **Payments**: EcoCash through Paynow express checkout. An order is only marked paid after a hash-verified Paynow message with the exact amount. Delivery is Mutare only.
 - **Order progress**: admins move orders one step at a time (or cancel, which returns stock) with an optional note; customers see each step and note in the app.
 
 ## Run it locally

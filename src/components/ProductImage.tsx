@@ -14,6 +14,7 @@ export const ProductImage = ({ product, iconSize, style }: Props) => {
   const categories = useCatalog((s) => s.categories);
   const [failed, setFailed] = useState(false);
   const icon = productIcon(product, categories);
+  console.log('[debug-image]', product.name, JSON.stringify(product.image), failed);
 
   return (
     <View style={[styles.wrap, { backgroundColor: colors.surfaceAlt }, style]}>

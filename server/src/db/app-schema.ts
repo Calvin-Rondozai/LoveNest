@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { sqliteTable, text, integer, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, blob, index, uniqueIndex, check } from 'drizzle-orm/sqlite-core';
 import { user } from './auth-schema.js';
 
 // Money is stored as integer cents to avoid floating-point rounding errors.
@@ -11,7 +11,7 @@ const updatedAt = () =>
   integer('updated_at', { mode: 'timestamp_ms' }).notNull().$defaultFn(() => new Date()).$onUpdateFn(() => new Date());
 
 export const ORDER_STATUSES = ['placed', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'] as const;
-export const PAYMENT_METHODS = ['ecocash', 'onemoney', 'cod'] as const;
+export const PAYMENT_METHODS = ['ecocash'] as const;
 export const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'] as const;
 
 export const category = sqliteTable('category', {
@@ -115,4 +115,20 @@ export const orderEvent = sqliteTable(
     createdAt: createdAt(),
   },
   (t) => [index('order_event_order_idx').on(t.orderId)],
+);
+
+/**
+ * Product photos stored in the database (Cloudinary is unavailable in Zimbabwe).
+ * Served at /images/:id with long-lived caching; ids are random so URLs never change content.
+ */
+export const image = sqliteTable(
+  'image',
+  {
+    id: id(),
+    contentType: text('content_type').notNull(),
+    size: integer('size').notNull(),
+    data: blob('data', { mode: 'buffer' }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [check('image_size_limit', sql`${t.size} <= 2097152`)],
 );

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { FormField } from '../components/FormField';
+import { KeyboardSafe } from '../components/KeyboardSafe';
 import { useOrders } from '../store/orders';
 import { useToast } from '../store/toast';
 import { ApiRequestError } from '../lib/api';
@@ -117,7 +118,8 @@ export const PaymentPendingScreen = () => {
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.bg }]}>
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <KeyboardSafe>
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <Icon
           name={failed ? 'close-circle-outline' : timedOut ? 'time-outline' : 'phone-portrait-outline'}
           size={64}
@@ -179,6 +181,7 @@ export const PaymentPendingScreen = () => {
           </Pressable>
         ) : null}
       </View>
+      </KeyboardSafe>
     </SafeAreaView>
   );
 };

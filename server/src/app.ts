@@ -13,7 +13,7 @@ import { auth, type AuthSession, type AuthUser } from './auth.js';
 import { db } from './db/client.js';
 import { env, isProd } from './env.js';
 import { ApiError } from './lib/errors.js';
-import { LOCAL_UPLOAD_DIR } from './lib/storage.js';
+import { imageStorageMode, loadImage } from './lib/storage.js';
 import { paynowMode } from './lib/paynow.js';
 import { csrfGuard } from './middleware/auth.js';
 import { catalogRoutes } from './routes/catalog.js';
@@ -97,7 +97,7 @@ app.route('/api/admin', adminRoutes);
 app.get('/health', async (c) => {
   try {
     await db.run(sql`select 1`);
-    return c.json({ ok: true, db: 'up', payments: paynowMode });
+    return c.json({ ok: true, db: 'up', payments: paynowMode, images: imageStorageMode });
   } catch {
     return c.json({ ok: false, db: 'down' }, 503);
   }
@@ -131,10 +131,23 @@ if (existsSync(LEGAL_DIR)) {
   app.use('/legal/*', serveStatic({ root: fromCwd(LEGAL_DIR), rewriteRequestPath: (p) => p.replace(/^\/legal/, '') }));
 }
 
-// Development-only product photo storage (production uses Cloudinary).
-if (!isProd) {
-  app.use('/uploads/*', serveStatic({ root: fromCwd(LOCAL_UPLOAD_DIR), rewriteRequestPath: (p) => p.replace(/^\/uploads/, '') }));
-}
+// Product photos stored in the database. Ids are random and photos never change once saved,
+// so phones and browsers may cache them for a year.
+app.get('/images/:id', async (c) => {
+  const id = c.req.param('id');
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return c.json({ error: { code: 'not_found', message: 'Not found.' } }, 404);
+  const img = await loadImage(id);
+  if (!img) return c.json({ error: { code: 'not_found', message: 'Not found.' } }, 404);
+  if (c.req.header('if-none-match') === `"${img.id}"`) return c.body(null, 304);
+  return c.body(new Uint8Array(img.data), 200, {
+    'Content-Type': img.contentType,
+    'Content-Length': String(img.size),
+    'Cache-Control': 'public, max-age=31536000, immutable',
+    ETag: `"${img.id}"`,
+    'X-Content-Type-Options': 'nosniff',
+    'Content-Security-Policy': "default-src 'none'; sandbox",
+  });
+});
 
 // Paynow's return URL (only used by web checkout); send people somewhere friendly.
 app.get('/payments/return', (c) => c.text('Payment received. You can return to the LoveNest app.'));

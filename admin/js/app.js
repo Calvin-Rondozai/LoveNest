@@ -378,16 +378,14 @@
 
   // ---------- orders ----------
 
-  var PAYMENT_METHOD = { ecocash: 'EcoCash', onemoney: 'OneMoney', cod: 'Cash on Delivery' };
+  var PAYMENT_METHOD = { ecocash: 'EcoCash' };
 
   function paymentLabel(o) {
     if (o.status === 'cancelled' && o.paymentStatus === 'paid') return '<span class="status refund-flag"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i>Refund due</span>';
     if (o.paymentStatus === 'paid') return '<span class="status status-ok"><i class="bi bi-check-circle" aria-hidden="true"></i>Paid</span>';
     if (o.paymentStatus === 'failed') return '<span class="status status-warn"><i class="bi bi-x-octagon" aria-hidden="true"></i>Payment failed</span>';
     if (o.paymentStatus === 'refunded') return '<span class="status status-off"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Refunded</span>';
-    return o.paymentMethod === 'cod'
-      ? '<span class="status status-off"><i class="bi bi-cash" aria-hidden="true"></i>Pay on delivery</span>'
-      : '<span class="status status-warn"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Awaiting payment</span>';
+    return '<span class="status status-warn"><i class="bi bi-hourglass-split" aria-hidden="true"></i>Awaiting payment</span>';
   }
 
   function statusLabel(status) {

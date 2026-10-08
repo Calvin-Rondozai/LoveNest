@@ -53,7 +53,7 @@ async function makeOrder(totalCents: number) {
       recipientName: 'Test',
       recipientPhone: '+263771234567',
       address: '1 Test Road',
-      city: 'Harare',
+      city: 'Mutare',
       idempotencyKey: crypto.randomUUID(),
     })
     .returning();

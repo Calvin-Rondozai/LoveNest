@@ -1,8 +1,8 @@
 import { toE164 } from './phone';
 
-export type MobileMoneyMethod = 'ecocash' | 'onemoney';
+export type MobileMoneyMethod = 'ecocash';
 
-export const MOBILE_MONEY_LABEL: Record<MobileMoneyMethod, string> = { ecocash: 'EcoCash', onemoney: 'OneMoney' };
+export const MOBILE_MONEY_LABEL: Record<MobileMoneyMethod, string> = { ecocash: 'EcoCash' };
 
 /** Zimbabwe mobile money numbers (07X XXX XXXX). Mirrors the server's rule. */
 export function mobileMoneyError(raw: string): string | null {

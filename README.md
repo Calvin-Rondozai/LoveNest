@@ -6,7 +6,7 @@
 
 <p align="center"><em>Gifts for every moment, delivered with love.</em></p>
 
-LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React Native. Customers browse gifts by occasion, add a personal touch, and have them delivered, paying by mobile money (EcoCash / Telecash) or cash on delivery.
+LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React Native. Customers browse gifts by occasion, add a personal touch, and have them delivered in Mutare, paying by EcoCash.
 
 > **Status:** production-ready code. The app and admin dashboard run on the real API in [`server/`](server/README.md). To go live, create the service accounts and follow **Going live** in the server README.
 
@@ -17,7 +17,7 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 **Shopping**
 - Home dashboard with a search bar, a hero banner and category shortcuts. Search and **Shop Now** open the market.
 - Market (Categories tab) with an **All** view by default, category filters, and search across product names, descriptions and categories.
-- Product details, cart, and a 4-step checkout: **Cart → Delivery → Confirm → Payment**. The order is reviewed and confirmed *before* payment.
+- Product details, cart, and a 4-step checkout: **Cart → Delivery → Confirm → Payment**. Delivery is Mutare only. Payment is EcoCash. The order is reviewed and confirmed *before* payment.
 - **Order tracking**: My Orders shows each order's status and a progress bar; Order Details shows a step-by-step timeline (Order placed, Confirmed, Being prepared, Out for delivery, Delivered, or Cancelled), notes from the shop, items, delivery details and payment status. Status changes arrive as in-app notifications. Pull down to refresh.
 
 **Accounts**
@@ -41,7 +41,7 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 **Admin dashboard** (`admin/`)
 - Separate web dashboard in HTML, CSS, JavaScript and Bootstrap 5, designed to Apple's Human Interface Guidelines.
 - **Overview**: open orders, customers, new sign-ups and products, an "Orders to handle" list (oldest first), recent sign-ups and products.
-- **Orders**: search by order number, customer or recipient; filter Active, Delivered, Cancelled or All. Open an order to see the customer, recipient (tap to call), items, payment and full history, then move it to the next step with an optional message to the customer, or cancel it. Orders only move forward one step at a time; delivered and cancelled orders are locked. Cash on delivery is marked paid on delivery, and cancelled paid orders are flagged "Refund due".
+- **Orders**: search by order number, customer or recipient; filter Active, Delivered, Cancelled or All. Open an order to see the customer, recipient (tap to call), items, payment and full history, then move it to the next step with an optional message to the customer, or cancel it. Orders only move forward one step at a time; delivered and cancelled orders are locked. Cancelled paid orders are flagged "Refund due".
 - **Products**: search, filter by category, add and edit with photo upload (images are resized and compressed in the browser), hide or show in the app, delete.
 - **Users**: search, filter by role, create (with a generated temporary password), edit name, role and status, suspend or reactivate, delete. You can't delete or demote yourself or the last admin.
 - Sidebar on wide screens and a floating tab bar on phones; follows light and dark mode; 44pt tap targets; confirmation only for deletes that can't be undone.
@@ -81,6 +81,17 @@ npm run db:migrate && npm run db:seed && npm run dev
 The admin dashboard is served by the API at **http://localhost:3000/admin**. Sign in with the `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` you set.
 
 Then point the app at it: copy `.env.example` to `.env` in the project root and set `EXPO_PUBLIC_API_URL` (Android emulator: `http://10.0.2.2:3000`; phone on the same Wi-Fi: `http://<your PC IP>:3000`).
+
+### Development build (APK)
+
+Google sign-in and other native features need a development build instead of Expo Go:
+
+```bash
+npx expo run:android            # builds the debug APK, installs it on the running emulator or phone
+npx expo start                  # afterwards, just start the dev server and open the LoveNest app
+```
+
+The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk` (the `android/` folder is generated and not committed). It uses `ANDROID_PACKAGE` from `.env`; `com.lovenest.app` is a development placeholder until you choose the permanent name.
 
 ### Trying it in development
 
@@ -148,7 +159,7 @@ Typography: **Poppins** for UI and **Pacifico** for script accents. The app icon
 | Product photos | **Cloudinary** (25 free credits a month, automatic resizing for mobile) |
 | Server (login, payments, admin API) | **Render** free web service, kept awake by an **UptimeRobot** ping |
 | Login | **Better Auth** on that server: email and password, Google sign-in (native, via ID token), 6-digit reset codes |
-| Payments | **Paynow** (EcoCash, OneMoney, InnBucks, cards). The integration key stays on the server; orders are only marked paid after the server confirms with Paynow |
+| Payments | **Paynow** (EcoCash). The integration key stays on the server; orders are only marked paid after the server confirms with Paynow |
 | Emails | **Resend** (3,000 a month, 100 a day) |
 | Google sign-in setup | Google Cloud Console OAuth client IDs (Web + Android); free, no billing |
 
@@ -187,11 +198,24 @@ The **LoveNest name, logo and brand images are not covered** by that licence and
 
 ## Changelog
 
+### 2026-10-08 (Mutare + EcoCash only)
+- Delivery city is fixed to Mutare (city/town field removed from checkout).
+- Cash on delivery removed; EcoCash is the only payment method.
+- Privacy Policy, Terms and Data safety updated. No new data types collected.
+
+### 2026-10-08 (development build)
+- Added `expo-dev-client`; built and installed a debug APK (`com.lovenest.app`, development placeholder package name) on the Android emulator.
+- No legal or Play Store changes needed.
+
+### 2026-10-08 (keyboard fix)
+- Text fields on Delivery, Payment, the payment waiting screen and all sign-in and account screens now stay above the on-screen keyboard on Android (edge-to-edge in Expo SDK 57) and iOS, with the bottom button kept visible. Dragging the form closes the keyboard. Verified on an Android emulator.
+- No legal or Play Store changes needed.
+
 ### 2026-10-08 (production backend)
-- Full API: admin users, products with Cloudinary photo upload, server-priced checkout with stock reservation and idempotency keys, Paynow EcoCash/OneMoney with hash-verified results and amount checks, order status changes, customer cancellation, account deletion that keeps order records for accounting.
+- Full API: admin users, products with Cloudinary photo upload, server-priced checkout with stock reservation and idempotency keys, Paynow EcoCash with hash-verified results and amount checks, order status changes, customer cancellation, account deletion that keeps order records for accounting.
 - The API serves the admin dashboard at `/admin` (same origin, strict CSP) and the legal pages at `/legal`.
 - Admin dashboard now uses the real API: real sign-in, forced password change for temporary passwords, photo uploads, live users and orders. Demo data removed.
-- Mobile app now uses the real API through the Better Auth Expo client (session in SecureStore): sign-up, sign-in, Google sign-in (development build), reset codes by email, change password, delete account, live catalog with offline cache, checkout with EcoCash, OneMoney or cash, a payment waiting screen, order history and notifications for status and payment changes. Signing out wipes personal data from the device.
+- Mobile app now uses the real API through the Better Auth Expo client (session in SecureStore): sign-up, sign-in, Google sign-in (development build), reset codes by email, change password, delete account, live catalog with offline cache, checkout with EcoCash, a payment waiting screen, order history and notifications for status and payment changes. Signing out wipes personal data from the device.
 - Production safety: the server refuses to start without email, photo and payment keys; development uses a terminal email log, local photo storage and a Paynow simulator.
 - Deployment: `render.yaml` (Node 20, free plan, Frankfurt), migrations and first-admin seeding on start.
 - 37 server tests; dashboard tested end to end in a browser against the real API.

@@ -23,7 +23,7 @@ Answer based on what the app collects once the backend is live:
 | Email address | Yes | No | Account management, Communications | No |
 | Phone number (recipient) | Yes | Yes (delivery partners) | App functionality | No |
 | Address (delivery) | Yes | Yes (delivery partners) | App functionality | No |
-| Phone number (mobile money payer) | Yes | No | App functionality (payments) | Yes (only for EcoCash/OneMoney) |
+| Phone number (mobile money payer) | Yes | No | App functionality (payments) | No (required for EcoCash) |
 | Purchase history | Yes | No | App functionality | No |
 | Other user-generated content (gift messages, instructions) | Yes | Yes (delivery partners) | App functionality | Yes |
 | Payment info | No* | n/a | n/a | n/a |

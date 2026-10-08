@@ -28,7 +28,7 @@ const SLIDES: Slide[] = [
     icon: 'car-outline',
     title: 'Fast & Safe',
     script: 'Delivery',
-    body: 'Pay with mobile money or cash on delivery, and track every order right to their door.',
+    body: 'Pay with EcoCash, and track every order right to their door.',
   },
 ];
 

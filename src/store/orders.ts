@@ -8,7 +8,7 @@ import { onSignOut } from './auth';
 
 export type OrderItem = { productId: string | null; name: string; price: number; quantity: number };
 export type OrderEvent = { status: OrderStatus; at: string; note?: string };
-export type PaymentMethod = 'ecocash' | 'onemoney' | 'cod';
+export type PaymentMethod = 'ecocash';
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 
 /** Order as returned by the LoveNest API. */
@@ -55,7 +55,7 @@ type OrdersState = {
   refresh: () => Promise<void>;
   /** Asks the server to re-check a mobile money payment with Paynow. */
   checkPayment: (orderId: string) => Promise<Order>;
-  retryPayment: (orderId: string, method: Exclude<PaymentMethod, 'cod'>, phone: string) => Promise<Order>;
+  retryPayment: (orderId: string, method: PaymentMethod, phone: string) => Promise<Order>;
   cancelOrder: (orderId: string) => Promise<Order>;
 };
 
@@ -67,7 +67,7 @@ function notifyChanges(previous: Order | undefined, next: Order) {
     const note = [...next.history].reverse().find((h) => h.status === next.status)?.note;
     push({ title: `${info.label}: ${next.orderNumber}`, body: note ? `${info.customerMessage} ${note}` : info.customerMessage, icon: info.icon, target: 'orders' });
   }
-  if (previous.paymentStatus !== 'paid' && next.paymentStatus === 'paid' && next.paymentMethod !== 'cod') {
+  if (previous.paymentStatus !== 'paid' && next.paymentStatus === 'paid') {
     push({ title: `Payment received: ${next.orderNumber}`, body: `We received US$${next.total.toFixed(2)}. Thank you!`, icon: 'card-outline', target: 'orders' });
   }
 }

@@ -14,12 +14,15 @@ export type CheckoutInput = {
   recipientPhone: string;
   address: string;
   apartment: string;
-  city: string;
+  city?: string;
   instructions: string;
   giftMessage: string;
-  paymentMethod: 'ecocash' | 'onemoney' | 'cod';
-  paymentPhone?: string; // E.164, required for mobile money
+  paymentMethod: 'ecocash';
+  paymentPhone: string; // E.164 EcoCash number
 };
+
+/** Delivery area for now. The app no longer asks for a city. */
+export const DELIVERY_CITY = 'Mutare';
 
 type Customer = { id: string; email: string };
 
@@ -124,11 +127,11 @@ export async function createOrder(customer: Customer, input: CheckoutInput, idem
             recipientPhone: input.recipientPhone,
             address: input.address,
             apartment: input.apartment,
-            city: input.city,
+            city: DELIVERY_CITY,
             instructions: input.instructions,
             giftMessage: input.giftMessage,
             idempotencyKey,
-            paymentPhone: input.paymentMethod === 'cod' ? null : (input.paymentPhone ?? null),
+            paymentPhone: input.paymentPhone,
           })
           .returning({ id: order.id });
         await tx.insert(orderItem).values(
@@ -149,15 +152,13 @@ export async function createOrder(customer: Customer, input: CheckoutInput, idem
   }
   if (!orderId) throw new ApiError(503, 'try_again', 'Could not create your order. Please try again.');
 
-  if (input.paymentMethod !== 'cod' && input.paymentPhone) {
-    await startMobilePayment(orderId, customer, input.paymentPhone, input.paymentMethod);
-  }
+  await startMobilePayment(orderId, customer, input.paymentPhone, input.paymentMethod);
   return (await loadOrder({ id: orderId })).dto;
 }
 
 // ---------- payments ----------
 
-/** Sends the EcoCash/OneMoney approval prompt to the customer's phone. */
+/** Sends the EcoCash approval prompt to the customer's phone. */
 export async function startMobilePayment(orderId: string, customer: Customer, phoneE164: string, method: MobileMethod) {
   const { order: o } = await loadOrder({ id: orderId, userId: customer.id });
   if (o.status === 'cancelled') throw conflict('order_cancelled', 'This order was cancelled.');
@@ -188,7 +189,7 @@ const lastPolled = new Map<string, number>();
 /** Re-checks a pending mobile money payment with Paynow (at most every 3 seconds per order). */
 export async function refreshPayment(orderId: string, userId?: string) {
   const { order: o } = await loadOrder({ id: orderId, userId });
-  if (o.paymentStatus === 'pending' && o.paynowPollUrl && o.paymentMethod !== 'cod') {
+  if (o.paymentStatus === 'pending' && o.paynowPollUrl) {
     const now = Date.now();
     if (now - (lastPolled.get(o.id) ?? 0) >= 3000) {
       lastPolled.set(o.id, now);
@@ -209,7 +210,6 @@ export async function refreshPayment(orderId: string, userId?: string) {
 export async function applyPaymentStatus(status: StatusResult) {
   const [o] = await db.select().from(order).where(eq(order.orderNumber, status.reference));
   if (!o) return { applied: false, reason: 'unknown_reference' as const };
-  if (o.paymentMethod === 'cod') return { applied: false, reason: 'cod' as const };
 
   if (status.outcome === 'paid') {
     const expected = (o.totalCents / 100).toFixed(2);
@@ -247,11 +247,7 @@ export async function changeStatus(orderId: string, to: OrderStatus, note: strin
   await db.transaction(async (tx) => {
     const res = await tx
       .update(order)
-      .set({
-        status: to,
-        // Cash on delivery is collected by the driver at handover.
-        ...(to === 'delivered' && o.paymentMethod === 'cod' ? { paymentStatus: 'paid' as const, paidAt: new Date() } : {}),
-      })
+      .set({ status: to })
       .where(and(eq(order.id, o.id), eq(order.status, o.status))); // guards against two admins at once
     if (res.rowsAffected !== 1) throw conflict('stale', 'This order was just updated by someone else. Refresh and try again.');
     await tx.insert(orderEvent).values({ orderId: o.id, status: to, note: note || null, createdBy: adminId });

@@ -16,7 +16,7 @@ import { useTheme } from '../context/ThemeContext';
 import { font, radii, spacing, primary } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 
-const PAYMENT_LABEL = { ecocash: 'EcoCash', onemoney: 'OneMoney', cod: 'Cash on Delivery' } as const;
+const PAYMENT_LABEL = { ecocash: 'EcoCash' } as const;
 const PAYMENT_STATUS = { pending: 'Awaiting payment', paid: 'Paid', failed: 'Payment failed', refunded: 'Refunded' } as const;
 
 export const OrderDetailScreen = () => {
@@ -34,7 +34,7 @@ export const OrderDetailScreen = () => {
     setRefreshing(true);
     try {
       await refresh();
-      if (order && order.paymentMethod !== 'cod' && order.paymentStatus === 'pending') await checkPayment(order.id);
+      if (order && order.paymentStatus === 'pending') await checkPayment(order.id);
     } catch (e) {
       showToast(e instanceof ApiRequestError ? e.message : 'Could not refresh. Please try again.', 3000);
     } finally {
@@ -146,17 +146,15 @@ export const OrderDetailScreen = () => {
           <Text style={[styles.cardTitle, { color: colors.text }]}>Payment</Text>
           <View style={styles.itemRow}>
             <Text style={[styles.itemName, { color: colors.text }]}>{PAYMENT_LABEL[order.paymentMethod]}</Text>
-            <Text style={[styles.itemPrice, { color: colors.textMuted }]}>
-              {order.paymentMethod === 'cod' && order.paymentStatus === 'pending' ? 'Pay on delivery' : PAYMENT_STATUS[order.paymentStatus]}
-            </Text>
+            <Text style={[styles.itemPrice, { color: colors.textMuted }]}>{PAYMENT_STATUS[order.paymentStatus]}</Text>
           </View>
         </View>
 
-        {order.paymentMethod !== 'cod' && order.status !== 'cancelled' && (order.paymentStatus === 'pending' || order.paymentStatus === 'failed') ? (
+        {order.status !== 'cancelled' && (order.paymentStatus === 'pending' || order.paymentStatus === 'failed') ? (
           <Button
             label="Pay Now"
             icon="lock-closed-outline"
-            onPress={() => navigation.navigate('PaymentPending', { orderId: order.id, method: order.paymentMethod as 'ecocash' | 'onemoney', phone: '' })}
+            onPress={() => navigation.navigate('PaymentPending', { orderId: order.id, method: 'ecocash', phone: '' })}
           />
         ) : null}
 

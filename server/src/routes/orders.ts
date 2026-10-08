@@ -17,15 +17,15 @@ const checkoutSchema = z
     recipientPhone: phoneNumber,
     address: text.clean(5, LIMITS.address, 'Address'),
     apartment: text.optionalClean(LIMITS.apartment, 'Apartment'),
-    city: text.clean(2, LIMITS.city, 'City'),
+    // City is accepted for older clients but always stored as Mutare (delivery area for now).
+    city: text.optionalClean(LIMITS.city, 'City'),
     instructions: text.optionalClean(LIMITS.instructions, 'Instructions'),
     giftMessage: text.optionalClean(LIMITS.giftMessage, 'Gift message'),
-    paymentMethod: z.enum(['ecocash', 'onemoney', 'cod']),
-    paymentPhone: zimMobileMoneyNumber.optional(),
-  })
-  .refine((v) => v.paymentMethod === 'cod' || v.paymentPhone, { message: 'Enter the mobile money number to pay with.', path: ['paymentPhone'] });
+    paymentMethod: z.enum(['ecocash']),
+    paymentPhone: zimMobileMoneyNumber,
+  });
 
-const paySchema = z.object({ paymentMethod: z.enum(['ecocash', 'onemoney']), paymentPhone: zimMobileMoneyNumber });
+const paySchema = z.object({ paymentMethod: z.enum(['ecocash']), paymentPhone: zimMobileMoneyNumber });
 
 const IDEMPOTENCY_RE = /^[A-Za-z0-9_-]{16,64}$/;
 

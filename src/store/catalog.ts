@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequest } from '../lib/api';
+import { API_URL } from '../config';
 import { categories as bundledCategories, products as bundledProducts, deliveryFee as bundledFee, Category, Product } from '../data/catalog';
 import { useCart } from './cart';
 
@@ -48,7 +49,8 @@ export const useCatalog = create<CatalogState>()(
             description: p.description,
             price: p.price,
             categoryId: p.categoryId,
-            image: p.image,
+            // Photos stored by the API come back as /images/<id>; make them absolute.
+            image: p.image && p.image.startsWith('/') ? `${API_URL}${p.image}` : p.image,
             inStock: p.inStock,
             stock: p.stock,
           }));

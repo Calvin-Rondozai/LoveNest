@@ -96,7 +96,7 @@ export const phoneNumber = z.string().transform((v, ctx) => {
   return e164;
 });
 
-/** Zimbabwe mobile money numbers (EcoCash 77/78, OneMoney 71), in the local 07XXXXXXXX form Paynow expects. */
+/** Zimbabwe mobile money numbers (EcoCash), in the local 07XXXXXXXX form Paynow expects. */
 export const zimMobileMoneyNumber = phoneNumber.transform((e164, ctx) => {
   if (!/^\+2637[1-8]\d{7}$/.test(e164)) {
     ctx.addIssue({ code: 'custom', message: 'Enter a Zimbabwe mobile money number, for example 0771 234 567.' });

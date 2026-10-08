@@ -9,7 +9,7 @@ import { env, isProd } from '../env.js';
 //   0771111111 paid after ~5 s   0772222222 paid after ~15 s
 //   0773333333 cancelled          0774444444 insufficient balance (fails immediately)
 
-export type MobileMethod = 'ecocash' | 'onemoney';
+export type MobileMethod = 'ecocash';
 export type PaymentOutcome = 'paid' | 'failed' | 'refunded' | 'pending';
 
 export type InitResult = { ok: true; pollUrl: string; instructions: string } | { ok: false; error: string };

@@ -70,7 +70,7 @@
       categoryId: p.categoryId,
       stock: p.stock,
       visible: p.visible,
-      image: p.image,
+      image: p.image && p.image.charAt(0) === '/' ? BASE + p.image : p.image,
       createdAt: p.createdAt,
     };
   }

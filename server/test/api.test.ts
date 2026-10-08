@@ -41,8 +41,10 @@ const delivery = {
   recipientPhone: '0771 234 567',
   address: '14 Lomagundi Road, Avondale',
   apartment: '',
-  city: 'Harare',
+  city: 'Mutare',
   instructions: '',
+  paymentMethod: 'ecocash' as const,
+  paymentPhone: '0771111111',
 };
 
 beforeAll(async () => {
@@ -70,7 +72,7 @@ describe('checkout', () => {
   it('requires sign-in, a valid body and an idempotency key', async () => {
     expect((await checkout('', { items: [] })).status).toBe(401);
     const cookie = await signUp('checkout-validation@example.com');
-    const bad = await checkout(cookie, { ...delivery, recipientPhone: '12', items: [{ productId: products[0]!.id, quantity: 1 }], paymentMethod: 'cod' });
+    const bad = await checkout(cookie, { ...delivery, recipientPhone: '12', items: [{ productId: products[0]!.id, quantity: 1 }] });
     expect(bad.status).toBe(400);
     const body = await bad.json();
     expect(body.error.fields.recipientPhone).toBeDefined();
@@ -83,12 +85,13 @@ describe('checkout', () => {
     const cookie = await signUp('pricing@example.com');
     const p = products[0]!;
     // Any price sent by a client is ignored: the schema does not even accept one.
-    const res = await checkout(cookie, { ...delivery, items: [{ productId: p.id, quantity: 2, priceCents: 1 }], paymentMethod: 'cod' });
+    const res = await checkout(cookie, { ...delivery, items: [{ productId: p.id, quantity: 2, priceCents: 1 }] });
     expect(res.status).toBe(201);
     const { order: o } = await res.json();
     expect(o.subtotalCents).toBe(p.priceCents * 2);
     expect(o.totalCents).toBe(p.priceCents * 2 + 500);
     expect(o.recipientPhone).toBe('+263771234567');
+    expect(o.city).toBe('Mutare');
     expect(o.status).toBe('placed');
     expect(o.history).toHaveLength(1);
   });
@@ -97,7 +100,7 @@ describe('checkout', () => {
     resetRateLimits();
     const cookie = await signUp('idempotent@example.com');
     const key = idem();
-    const body = { ...delivery, items: [{ productId: products[1]!.id, quantity: 1 }], paymentMethod: 'cod' };
+    const body = { ...delivery, items: [{ productId: products[1]!.id, quantity: 1 }] };
     const first = await (await checkout(cookie, body, key)).json();
     const second = await (await checkout(cookie, body, key)).json();
     expect(second.order.id).toBe(first.order.id);
@@ -109,9 +112,9 @@ describe('checkout', () => {
     const cookie = await signUp('stock@example.com');
     const p = products[2]!;
     await db.update(product).set({ stock: 1 }).where(eq(product.id, p.id));
-    const ok = await checkout(cookie, { ...delivery, items: [{ productId: p.id, quantity: 1 }], paymentMethod: 'cod' });
+    const ok = await checkout(cookie, { ...delivery, items: [{ productId: p.id, quantity: 1 }] });
     expect(ok.status).toBe(201);
-    const sold = await checkout(cookie, { ...delivery, items: [{ productId: p.id, quantity: 1 }], paymentMethod: 'cod' });
+    const sold = await checkout(cookie, { ...delivery, items: [{ productId: p.id, quantity: 1 }] });
     expect(sold.status).toBe(409);
     expect((await sold.json()).error.code).toBe('out_of_stock');
 
@@ -127,7 +130,7 @@ describe('checkout', () => {
     resetRateLimits();
     const a = await signUp('private-a@example.com');
     const b = await signUp('private-b@example.com');
-    const { order: o } = await (await checkout(a, { ...delivery, items: [{ productId: products[3]!.id, quantity: 1 }], paymentMethod: 'cod' })).json();
+    const { order: o } = await (await checkout(a, { ...delivery, items: [{ productId: products[3]!.id, quantity: 1 }] })).json();
     expect((await call(`/api/orders/${o.id}`, { cookie: b })).status).toBe(404);
     const mine = await call('/api/orders', { cookie: b });
     expect(mine.json.orders).toHaveLength(0);
@@ -160,7 +163,7 @@ describe('mobile money (development simulator)', () => {
   it('reports a failed payment and allows a retry', async () => {
     resetRateLimits();
     const cookie = await signUp('momo-fail@example.com');
-    const res = await checkout(cookie, { ...delivery, items: [{ productId: products[4]!.id, quantity: 1 }], paymentMethod: 'onemoney', paymentPhone: '0774444444' });
+    const res = await checkout(cookie, { ...delivery, items: [{ productId: products[4]!.id, quantity: 1 }], paymentMethod: 'ecocash', paymentPhone: '0774444444' });
     const { order: o } = await res.json();
     expect(o.paymentStatus).toBe('failed');
     expect(o.paymentError).toMatch(/insufficient/i);
@@ -187,10 +190,17 @@ describe('admin: orders', () => {
     expect((await call('/api/admin/orders')).status).toBe(401);
   });
 
-  it('moves orders one step at a time, records notes, and marks cash orders paid on delivery', async () => {
+  it('moves orders one step at a time and records notes', async () => {
     resetRateLimits();
+    vi.useFakeTimers({ toFake: ['Date'] });
     const cookie = await signUp('lifecycle@example.com', 'Lifecycle Customer');
-    const { order: o } = await (await checkout(cookie, { ...delivery, items: [{ productId: products[5]!.id, quantity: 1 }], paymentMethod: 'cod' })).json();
+    const { order: o } = await (await checkout(cookie, { ...delivery, items: [{ productId: products[5]!.id, quantity: 1 }] })).json();
+
+    // EcoCash must be paid before the shop progresses the order in a real shop; here we
+    // confirm payment via the simulator so the lifecycle assertions stay clear.
+    vi.setSystemTime(Date.now() + 6000);
+    const paid = await call(`/api/orders/${o.id}/payment`, { cookie });
+    expect(paid.json.order.paymentStatus).toBe('paid');
 
     const skip = await call(`/api/admin/orders/${o.id}/status`, { method: 'POST', cookie: adminCookie, body: { status: 'delivered' } });
     expect(skip.status).toBe(409);
@@ -211,6 +221,7 @@ describe('admin: orders', () => {
 
     const locked = await call(`/api/admin/orders/${o.id}/status`, { method: 'POST', cookie: adminCookie, body: { status: 'cancelled' } });
     expect(locked.status).toBe(409);
+    vi.useRealTimers();
   });
 });
 
@@ -256,7 +267,7 @@ describe('admin: users', () => {
   it('deletes a customer but keeps their orders for accounting', async () => {
     resetRateLimits();
     const cookie = await signUp('delete-me@example.com');
-    const { order: o } = await (await checkout(cookie, { ...delivery, items: [{ productId: products[0]!.id, quantity: 1 }], paymentMethod: 'cod' })).json();
+    const { order: o } = await (await checkout(cookie, { ...delivery, items: [{ productId: products[0]!.id, quantity: 1 }] })).json();
     const [target] = await db.select().from(user).where(eq(user.email, 'delete-me@example.com'));
     expect((await call(`/api/admin/users/${target!.id}`, { method: 'DELETE', cookie: adminCookie })).status).toBe(204);
     const kept = await call(`/api/admin/orders/${o.id}`, { cookie: adminCookie });
@@ -294,9 +305,17 @@ describe('admin: products', () => {
     form.append('image', new File([PNG], 'flowers.png', { type: 'image/png' }));
     const uploaded = await request(`/api/admin/products/${id}/image`, { method: 'POST', headers: { cookie: adminCookie }, body: form });
     expect(uploaded.status).toBe(200);
-    expect((await uploaded.json()).product.image).toMatch(/\/uploads\/.+\.png$/);
+    const photo = (await uploaded.json()).product.image as string;
+    expect(photo).toMatch(/^\/images\/[0-9a-f-]{36}$/);
+    const served = await request(photo, {});
+    expect(served.status).toBe(200);
+    expect(served.headers.get('content-type')).toBe('image/png');
+    expect(served.headers.get('cache-control')).toContain('immutable');
+    expect(new Uint8Array(await served.arrayBuffer())).toEqual(PNG);
 
     expect((await call(`/api/admin/products/${id}`, { method: 'DELETE', cookie: adminCookie })).status).toBe(204);
+    // Deleting the product removes its photo too.
+    expect((await request(photo, {})).status).toBe(404);
   });
 });
 

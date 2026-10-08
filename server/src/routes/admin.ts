@@ -8,7 +8,7 @@ import { requireAdmin } from '../middleware/auth.js';
 import { ApiError, badRequest, conflict, notFound } from '../lib/errors.js';
 import { ORDER_STATUSES } from '../db/app-schema.js';
 import { LIMITS, emailAddress, parseBody, password, personName, text } from '../lib/validation.js';
-import { deleteProductImage, detectImageType, isAllowedImageType, MAX_IMAGE_BYTES, storeProductImage } from '../lib/storage.js';
+import { deleteProductImage, detectImageType, ImageTooLargeError, isAllowedImageType, MAX_IMAGE_BYTES, storeProductImage } from '../lib/storage.js';
 import { productDto } from '../services/serializers.js';
 import { changeStatus, listOrders } from '../services/orders.js';
 import type { AppEnv } from '../app.js';
@@ -180,7 +180,13 @@ export const adminRoutes = new Hono<AppEnv>()
     const type = detectImageType(bytes);
     if (!type || !isAllowedImageType(type)) throw badRequest('Choose a JPG, PNG or WebP image.');
 
-    const stored = await storeProductImage(bytes, type);
+    let stored;
+    try {
+      stored = await storeProductImage(bytes, type);
+    } catch (e) {
+      if (e instanceof ImageTooLargeError) throw badRequest(e.message);
+      throw e;
+    }
     const [updated] = await db.update(product).set({ imageUrl: stored.url, imagePublicId: stored.publicId }).where(eq(product.id, id)).returning();
     await deleteProductImage(row.imagePublicId);
     return c.json({ product: productDto(updated!) });

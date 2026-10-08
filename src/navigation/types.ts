@@ -9,7 +9,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   ChangePassword: { forced?: boolean } | undefined;
   OrderDetail: { orderNumber: string };
-  PaymentPending: { orderId: string; method: 'ecocash' | 'onemoney'; phone: string };
+  PaymentPending: { orderId: string; method: 'ecocash'; phone: string };
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: { email?: string } | undefined;
