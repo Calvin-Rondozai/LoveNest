@@ -6,7 +6,6 @@ import { AuthLayout } from '../../components/AuthLayout';
 import { FormField } from '../../components/FormField';
 import { Button } from '../../components/Button';
 import { useAuth, AuthError } from '../../store/auth';
-import { useToast } from '../../store/toast';
 import { useLockout, formatWait } from '../../utils/rateLimit';
 import { emailError, LIMITS } from '../../utils/validation';
 import { font, spacing, danger } from '../../theme';
@@ -16,7 +15,6 @@ export const ForgotPasswordScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'ForgotPassword'>>();
   const requestPasswordReset = useAuth((s) => s.requestPasswordReset);
-  const showToast = useToast((s) => s.show);
   const { locked, remaining, lock } = useLockout();
 
   const [email, setEmail] = useState(route.params?.email ?? '');
@@ -32,9 +30,8 @@ export const ForgotPasswordScreen = () => {
 
     setLoading(true);
     try {
-      const code = await requestPasswordReset(email);
-      // No email service yet, so surface the code in development so the flow is testable.
-      if (__DEV__) showToast(`Demo code: ${code}`, 6000);
+      await requestPasswordReset(email);
+      // In development without Resend, the server prints the code in its terminal.
       navigation.navigate('VerifyOtp', { email: email.trim() });
     } catch (e) {
       const err = e as AuthError;

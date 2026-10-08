@@ -26,7 +26,7 @@ export const VerifyOtpScreen = () => {
   const [status, setStatus] = useState<OtpStatus>('idle');
   const [checking, setChecking] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>();
-  // Expired / locked / rate-limited codes can't be retried — only a new code helps.
+  // Expired / locked / rate-limited codes can't be retried; only a new code helps.
   const [dead, setDead] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -44,7 +44,7 @@ export const VerifyOtpScreen = () => {
     try {
       await verifyResetCode(email, value);
       setStatus('success');
-      timers.current.push(setTimeout(() => navigation.replace('ResetPassword', { email }), 900));
+      timers.current.push(setTimeout(() => navigation.replace('ResetPassword', { email, otp: value }), 900));
     } catch (e) {
       const err = e as AuthError;
       setStatus('error');
@@ -73,9 +73,8 @@ export const VerifyOtpScreen = () => {
 
   const resend = async () => {
     try {
-      const newCode = await requestPasswordReset(email);
-      if (__DEV__) showToast(`Demo code: ${newCode}`, 6000);
-      else showToast('A new code is on its way');
+      await requestPasswordReset(email);
+      showToast('A new code is on its way');
       setCode('');
       setStatus('idle');
       setDead(false);

@@ -8,7 +8,7 @@ import { FormField } from '../components/FormField';
 import { PriceRow } from '../components/PriceRow';
 import { Button } from '../components/Button';
 import { useCheckout } from '../store/checkout';
-import { deliveryFee } from '../data/catalog';
+import { useCatalog } from '../store/catalog';
 import { useTheme } from '../context/ThemeContext';
 import { phoneError, isPhoneValid, toE164 } from '../utils/phone';
 import { nameError, textError, optionalTextError, sanitize, compactErrors, LIMITS } from '../utils/validation';
@@ -18,6 +18,7 @@ import { RootStackParamList } from '../navigation/types';
 export const DeliveryScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
+  const deliveryFee = useCatalog((s) => s.deliveryFee);
   const { recipientName, recipientPhone, address, apartment, city, instructions, update } = useCheckout();
   // Show errors only after the first Continue tap, then update them live as the user fixes fields.
   const [submitted, setSubmitted] = useState(false);

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
+import { newIdempotencyKey } from '../lib/api';
 
-export type PaymentMethod = 'ecocash' | 'cod';
+export type PaymentMethod = 'ecocash' | 'onemoney' | 'cod';
 
 type CheckoutDraft = {
   recipientName: string;
@@ -11,7 +12,10 @@ type CheckoutDraft = {
   instructions: string;
   giftMessage: string;
   paymentMethod: PaymentMethod;
-  promoCode: string;
+  /** Mobile money number that approves the payment. */
+  paymentPhone: string;
+  /** One key per checkout attempt, so pressing Pay twice never creates two orders. */
+  idempotencyKey: string;
 };
 
 type CheckoutState = CheckoutDraft & {
@@ -19,7 +23,7 @@ type CheckoutState = CheckoutDraft & {
   reset: () => void;
 };
 
-const initialDraft: CheckoutDraft = {
+const initialDraft = (): CheckoutDraft => ({
   recipientName: '',
   recipientPhone: '',
   address: '',
@@ -28,11 +32,12 @@ const initialDraft: CheckoutDraft = {
   instructions: '',
   giftMessage: '',
   paymentMethod: 'ecocash',
-  promoCode: '',
-};
+  paymentPhone: '',
+  idempotencyKey: newIdempotencyKey(),
+});
 
 export const useCheckout = create<CheckoutState>((set) => ({
-  ...initialDraft,
+  ...initialDraft(),
   update: (fields) => set(fields),
-  reset: () => set(initialDraft),
+  reset: () => set(initialDraft()),
 }));

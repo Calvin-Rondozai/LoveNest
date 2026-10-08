@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { useAuth } from './auth';
 import { useOnboarding } from './onboarding';
 import { useNotifications } from './notifications';
+import { useOrders } from './orders';
+import { useCatalog } from './catalog';
 
-const stores = [useAuth, useOnboarding, useNotifications];
+const stores = [useAuth, useOnboarding, useNotifications, useOrders, useCatalog];
 
 /** True once every persisted store has loaded from AsyncStorage, so the first screen is the right one. */
 export const useStoresHydrated = () => {

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Text, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { AuthLayout } from '../components/AuthLayout';
 import { FormField } from '../components/FormField';
 import { Button } from '../components/Button';
@@ -9,12 +9,16 @@ import { useAuth, AuthError } from '../store/auth';
 import { useToast } from '../store/toast';
 import { useLockout, formatWait } from '../utils/rateLimit';
 import { passwordError, confirmError, compactErrors, LIMITS } from '../utils/validation';
-import { font, spacing, danger } from '../theme';
+import { font, spacing, danger, primary } from '../theme';
+import { RootStackParamList } from '../navigation/types';
 
 type Errors = { current?: string; password?: string; confirm?: string; form?: string };
 
 export const ChangePasswordScreen = () => {
   const navigation = useNavigation();
+  // Forced: an admin created this account with a temporary password.
+  const forced = Boolean(useRoute<RouteProp<RootStackParamList, 'ChangePassword'>>().params?.forced);
+  const signOut = useAuth((s) => s.signOut);
   const user = useAuth((s) => s.user);
   const changePassword = useAuth((s) => s.changePassword);
   const showToast = useToast((s) => s.show);
@@ -39,7 +43,8 @@ export const ChangePasswordScreen = () => {
     try {
       await changePassword(current, password);
       showToast('Your password has been changed', 3000);
-      navigation.goBack();
+      // In forced mode the navigator switches to the app automatically once the flag clears.
+      if (!forced) navigation.goBack();
     } catch (e) {
       const err = e as AuthError;
       if (err.code === 'rate_limited' && err.retryAfterMs) lock(err.retryAfterMs);
@@ -51,13 +56,17 @@ export const ChangePasswordScreen = () => {
 
   return (
     <AuthLayout
-      showBack
+      showBack={!forced}
       headerIcon="key-outline"
-      title="Change Password"
-      subtitle="Enter your current password, then choose a new one."
+      title={forced ? 'Choose Your Password' : 'Change Password'}
+      subtitle={
+        forced
+          ? 'Your account was created with a temporary password. Enter it, then choose your own to continue.'
+          : 'Enter your current password, then choose a new one.'
+      }
     >
       <FormField
-        label="Current Password"
+        label={forced ? 'Temporary Password' : 'Current Password'}
         icon="lock-closed-outline"
         value={current}
         onChangeText={setCurrent}
@@ -101,10 +110,16 @@ export const ChangePasswordScreen = () => {
       ) : null}
 
       <Button label={loading ? 'Saving...' : 'Update Password'} onPress={submit} disabled={loading || locked} />
+      {forced ? (
+        <Text style={styles.signOut} onPress={() => signOut()} suppressHighlighting>
+          Sign Out
+        </Text>
+      ) : null}
     </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
+  signOut: { color: primary, fontSize: font.size.md, fontFamily: font.sansBold, textAlign: 'center', marginTop: spacing.lg, paddingVertical: spacing.sm },
   formError: { color: danger, fontSize: font.size.sm, fontFamily: font.sansMedium, textAlign: 'center', marginBottom: spacing.md },
 });

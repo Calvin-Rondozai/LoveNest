@@ -23,11 +23,14 @@ Answer based on what the app collects once the backend is live:
 | Email address | Yes | No | Account management, Communications | No |
 | Phone number (recipient) | Yes | Yes (delivery partners) | App functionality | No |
 | Address (delivery) | Yes | Yes (delivery partners) | App functionality | No |
+| Phone number (mobile money payer) | Yes | No | App functionality (payments) | Yes (only for EcoCash/OneMoney) |
 | Purchase history | Yes | No | App functionality | No |
 | Other user-generated content (gift messages, instructions) | Yes | Yes (delivery partners) | App functionality | Yes |
 | Payment info | No* | n/a | n/a | n/a |
 
-\* Mobile money is processed by the provider; LoveNest never sees PINs. Update this if you add card payments.
+\* Mobile money is processed by Paynow and the operator; LoveNest never sees PINs. Update this if you add card payments.
+
+Google Play does not count transfers to service providers acting on your behalf (Paynow, Render, Turso, Resend, Cloudinary) as "sharing", so the Shared column only covers delivery partners.
 
 - Data is encrypted in transit: **Yes** (make sure the backend is HTTPS-only).
 - Users can request data deletion: **Yes** (in-app + web URL).
@@ -43,9 +46,9 @@ Answer based on what the app collects once the backend is live:
 - [ ] New personal developer accounts must run a **closed test with at least 12 testers for 14 days** before production access.
 - [ ] Build an AAB with EAS: `npx eas build -p android --profile production`.
 
-## Backend must enforce (before launch)
+## Backend safeguards (done in `server/`)
 
-The app's validation and rate limiting are client-side only. They improve UX but can be bypassed. The server must:
+The app's own checks are for user experience; the server enforces all of these:
 
 - Re-validate every field (same rules as `src/utils/validation.ts`).
 - Rate-limit login, sign-up, password-reset requests and code verification per account **and** per IP; return `429` with `Retry-After` (the app already maps this to its lockout UI via `AuthError('rate_limited')`).

@@ -31,7 +31,10 @@
           "resizeMode": "contain",
           "backgroundColor": "#FFF7F7"
         }
-      ]
-    ]
+      ],
+      "expo-secure-store",
+      "expo-web-browser"
+    ],
+    "scheme": "lovenest"
   }
 }

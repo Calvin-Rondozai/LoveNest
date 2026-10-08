@@ -7,7 +7,8 @@ import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { QuantityControl } from '../components/QuantityControl';
 import { PriceRow } from '../components/PriceRow';
-import { products } from '../data/catalog';
+import { ProductImage } from '../components/ProductImage';
+import { useCatalog } from '../store/catalog';
 import { useCart, cartSubtotal } from '../store/cart';
 import { useTheme } from '../context/ThemeContext';
 import { font, radii, spacing, primary } from '../theme';
@@ -17,7 +18,8 @@ export const CartScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
   const { items, increment, decrement, remove } = useCart();
-  const subtotal = cartSubtotal(items);
+  const products = useCatalog((s) => s.products);
+  const subtotal = cartSubtotal(items, products);
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.bg }]} edges={['top']}>
@@ -28,12 +30,11 @@ export const CartScreen = () => {
         keyExtractor={(i) => i.productId}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
-          const product = products.find((p) => p.id === item.productId)!;
+          const product = products.find((p) => p.id === item.productId);
+          if (!product) return null;
           return (
             <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={[styles.thumb, { backgroundColor: colors.surfaceAlt }]}>
-                <Icon name={product.icon} iconSet={product.iconSet} size={26} color={primary} />
-              </View>
+              <ProductImage product={product} iconSize={26} style={styles.thumb} />
               <View style={styles.info}>
                 <Text style={[styles.name, { color: colors.text }]}>{product.name}</Text>
                 <Text style={styles.price}>US${product.price.toFixed(2)}</Text>

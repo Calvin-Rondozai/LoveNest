@@ -1,265 +1,196 @@
 /*
- * LoveNest Admin data layer.
+ * LoveNest Admin data layer. Talks to the LoveNest API (server/), which also serves this
+ * dashboard at /admin, so requests are same-origin and use the session cookie.
  *
- * Every screen talks to window.LoveNestApi only. Today it is backed by a mock that
- * stores data in this browser (localStorage) so the dashboard is fully usable before
- * the backend exists. When the server is live, set API_BASE_URL and replace each mock
- * method body with a fetch() call to the matching endpoint. Keep the contract:
- * resolve with data, or reject with an ApiError { code, message, retryAfterMs }.
- *
- * Planned endpoints (Render + Better Auth + Turso + Cloudinary):
- *   POST   /admin/session            sign in (admin role required)
- *   GET    /admin/users              list users
- *   POST   /admin/users              create user
- *   PATCH  /admin/users/:id          update name, role, status
- *   DELETE /admin/users/:id          delete user and their data
- *   GET    /admin/products           list products
- *   POST   /admin/products           create product (image uploaded to Cloudinary)
- *   PATCH  /admin/products/:id       update product
- *   DELETE /admin/products/:id       delete product
+ * Every method resolves with data or rejects with an ApiError { code, message, fields, retryAfterMs }.
  */
 (function () {
   'use strict';
 
-  var API_BASE_URL = null; // e.g. 'https://lovenest-api.onrender.com'
-  var DEMO_MODE = API_BASE_URL === null;
+  // Same origin by default. Set window.LOVENEST_API_URL (js/config.js) only if the dashboard
+  // is hosted somewhere else.
+  var BASE = (window.LOVENEST_API_URL || '').replace(/\/$/, '');
+  var TIMEOUT_MS = 20000;
 
-  var KEYS = {
-    users: 'lovenest.admin.users',
-    products: 'lovenest.admin.products',
-    session: 'lovenest.admin.session',
-    limiter: 'lovenest.admin.signin-attempts',
-  };
-
-  var CATEGORIES = [
-    { id: 'birthday', name: 'Birthday Gifts' },
-    { id: 'romance', name: 'Love & Romance' },
-    { id: 'flowers', name: 'Flowers' },
-    { id: 'toys', name: 'Toys & More' },
-    { id: 'corporate', name: 'Corporate Gifts' },
-  ];
-
-  function ApiError(code, message, retryAfterMs) {
+  function ApiError(code, message, fields, retryAfterMs) {
     this.name = 'ApiError';
     this.code = code;
     this.message = message;
+    this.fields = fields || null;
     this.retryAfterMs = retryAfterMs;
   }
   ApiError.prototype = Object.create(Error.prototype);
 
-  // ---------- storage helpers ----------
+  async function request(path, options) {
+    options = options || {};
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
+    var init = { method: options.method || 'GET', credentials: 'include', headers: {}, signal: controller.signal };
+    if (options.form) {
+      init.body = options.form; // the browser sets the multipart boundary
+    } else if (options.body !== undefined) {
+      init.headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(options.body);
+    }
 
-  function read(key, fallback) {
+    var res;
     try {
-      var raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
+      res = await fetch(BASE + path, init);
     } catch (e) {
-      return fallback;
+      throw new ApiError('network', e && e.name === 'AbortError'
+        ? 'The server took too long to respond. Check your connection and try again.'
+        : 'Can\'t reach the LoveNest server. Check your connection and try again.');
+    } finally {
+      clearTimeout(timer);
     }
-  }
-  function write(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (e) {
-      throw new ApiError('storage_full', 'This browser ran out of storage. Try a smaller photo.');
+
+    if (res.status === 204) return null;
+    var data = null;
+    try { data = await res.json(); } catch (e) { data = null; }
+
+    if (!res.ok) {
+      var err = (data && data.error) || {};
+      var retry = Number(res.headers.get('Retry-After')) || 0;
+      // Better Auth errors use { message, code } at the top level.
+      var message = err.message || (data && data.message) || 'Something went wrong. Please try again.';
+      var code = err.code || (data && data.code && String(data.code).toLowerCase()) || (res.status === 401 ? 'unauthorized' : res.status === 429 ? 'rate_limited' : 'error');
+      if (res.status === 429 && !err.message) message = 'Too many attempts. Please wait a moment and try again.';
+      throw new ApiError(code, message, err.fields, retry ? retry * 1000 : undefined);
     }
-  }
-  function delay(ms) {
-    return new Promise(function (resolve) { setTimeout(resolve, ms || 350); });
-  }
-  function uid(prefix) {
-    return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-  }
-  function daysAgo(n) {
-    return new Date(Date.now() - n * 86400000).toISOString();
+    return data;
   }
 
-  // ---------- seed data (demo only) ----------
-
-  function seed() {
-    if (!read(KEYS.users, null)) {
-      write(KEYS.users, [
-        { id: 'u_admin', name: 'LoveNest Admin', email: 'admin@lovenest.app', role: 'admin', provider: 'password', status: 'active', createdAt: daysAgo(40), password: 'Admin1234' },
-        { id: 'u_1', name: 'Tendai Moyo', email: 'tendai.moyo@example.com', role: 'customer', provider: 'password', status: 'active', createdAt: daysAgo(1) },
-        { id: 'u_2', name: 'Rutendo Chikwanha', email: 'rutendo.c@example.com', role: 'customer', provider: 'google', status: 'active', createdAt: daysAgo(3) },
-        { id: 'u_3', name: 'Farai Ndlovu', email: 'farai.ndlovu@example.com', role: 'customer', provider: 'password', status: 'suspended', createdAt: daysAgo(12) },
-        { id: 'u_4', name: 'Nyasha Mutasa', email: 'nyasha.m@example.com', role: 'customer', provider: 'google', status: 'active', createdAt: daysAgo(20) },
-      ]);
-    }
-    if (!read(KEYS.products, null)) {
-      write(KEYS.products, [
-        { id: 'p1', name: 'Red Rose Bouquet', price: 35, categoryId: 'flowers', stock: 12, visible: true, image: null, description: 'A dozen fresh red roses, hand-tied with satin ribbon.', createdAt: daysAgo(30) },
-        { id: 'p2', name: 'Cute Teddy Bear', price: 20, categoryId: 'toys', stock: 25, visible: true, image: null, description: 'Soft plush teddy bear with a red bow, 30cm tall.', createdAt: daysAgo(28) },
-        { id: 'p3', name: 'Premium Chocolate Box', price: 15, categoryId: 'romance', stock: 40, visible: true, image: null, description: 'Assorted Belgian chocolates in an elegant gift box.', createdAt: daysAgo(20) },
-        { id: 'p4', name: 'Birthday Cake Hamper', price: 42, categoryId: 'birthday', stock: 6, visible: true, image: null, description: 'Chocolate cake, balloons and a birthday card, all in one.', createdAt: daysAgo(9) },
-        { id: 'p5', name: 'Corporate Gift Set', price: 55, categoryId: 'corporate', stock: 10, visible: true, image: null, description: 'Branded notebook, pen and mug set for your business partners.', createdAt: daysAgo(4) },
-        { id: 'p6', name: 'Love Letter Card', price: 8, categoryId: 'romance', stock: 0, visible: false, image: null, description: 'A handwritten-style love note card with envelope.', createdAt: daysAgo(2) },
-      ]);
-    }
+  // Server prices are in cents; the dashboard edits dollars.
+  function fromProduct(p) {
+    return {
+      id: p.id,
+      name: p.name,
+      description: p.description,
+      price: p.priceCents / 100,
+      categoryId: p.categoryId,
+      stock: p.stock,
+      visible: p.visible,
+      image: p.image,
+      createdAt: p.createdAt,
+    };
   }
-
-  // Never expose stored passwords to the UI.
-  function publicUser(u) {
-    return { id: u.id, name: u.name, email: u.email, role: u.role, provider: u.provider, status: u.status, createdAt: u.createdAt };
-  }
-  function currentAdmin() {
-    var session = read(KEYS.session, null);
-    if (!session) throw new ApiError('unauthorized', 'Your session has ended. Please sign in again.');
-    return session;
-  }
-
-  // ---------- sign-in rate limit (the server must enforce its own) ----------
-
-  var MAX_ATTEMPTS = 5;
-  var WINDOW_MS = 15 * 60000;
-  var LOCK_MS = 5 * 60000;
-
-  function assertNotLocked() {
-    var state = read(KEYS.limiter, { attempts: [], lockedUntil: 0 });
-    var wait = state.lockedUntil - Date.now();
-    if (wait > 0) throw new ApiError('rate_limited', 'Too many attempts. Try again in ' + Math.ceil(wait / 60000) + ' min.', wait);
-  }
-  function recordFailure() {
-    var now = Date.now();
-    var state = read(KEYS.limiter, { attempts: [], lockedUntil: 0 });
-    var attempts = state.attempts.filter(function (t) { return now - t < WINDOW_MS; }).concat(now);
-    write(KEYS.limiter, attempts.length >= MAX_ATTEMPTS ? { attempts: [], lockedUntil: now + LOCK_MS } : { attempts: attempts, lockedUntil: 0 });
-  }
-
-  // ---------- public API ----------
 
   var api = {
-    demoMode: DEMO_MODE,
-    categories: CATEGORIES,
+    categories: [],
+    session: null,
 
-    getSession: function () {
-      return read(KEYS.session, null);
+    // ---------- session ----------
+
+    /** Restores the session from the cookie. Resolves with the admin or null. */
+    loadSession: async function () {
+      try {
+        var data = await request('/api/me');
+        api.session = data.user.role === 'admin' ? data.user : null;
+      } catch (e) {
+        if (e.code === 'network') throw e;
+        api.session = null;
+      }
+      return api.session;
     },
+
+    getSession: function () { return api.session; },
 
     signIn: async function (email, password) {
-      await delay(500);
-      assertNotLocked();
-      var users = read(KEYS.users, []);
-      var user = users.find(function (u) { return u.email === email.trim().toLowerCase(); });
-      if (!user || user.password !== password || user.role !== 'admin' || user.status !== 'active') {
-        recordFailure();
-        // Same message for every failure so it never reveals which accounts exist.
-        throw new ApiError('invalid_credentials', 'Incorrect email or password, or this account is not an admin.');
+      await request('/api/auth/sign-in/email', { method: 'POST', body: { email: email.trim(), password: password } });
+      var data = await request('/api/me');
+      if (data.user.role !== 'admin') {
+        await api.signOut();
+        throw new ApiError('not_admin', 'This account is not an admin. Use the LoveNest app instead.');
       }
-      write(KEYS.limiter, { attempts: [], lockedUntil: 0 });
-      var session = { id: user.id, name: user.name, email: user.email };
-      write(KEYS.session, session);
-      return session;
+      api.session = data.user;
+      return api.session;
     },
 
-    signOut: function () {
-      localStorage.removeItem(KEYS.session);
+    changePassword: async function (currentPassword, newPassword) {
+      await request('/api/auth/change-password', {
+        method: 'POST',
+        body: { currentPassword: currentPassword, newPassword: newPassword, revokeOtherSessions: true },
+      });
+      return api.loadSession();
     },
 
-    // Users
+    signOut: async function () {
+      api.session = null;
+      try { await request('/api/auth/sign-out', { method: 'POST', body: {} }); } catch (e) { /* already signed out */ }
+    },
+
+    // ---------- catalog ----------
+
+    loadCategories: async function () {
+      var data = await request('/api/categories');
+      api.categories = data.categories;
+      return api.categories;
+    },
+
+    // ---------- users ----------
 
     listUsers: async function () {
-      await delay();
-      currentAdmin();
-      return read(KEYS.users, []).map(publicUser);
+      return (await request('/api/admin/users')).users;
     },
-
     createUser: async function (input) {
-      await delay();
-      currentAdmin();
-      var users = read(KEYS.users, []);
-      var email = input.email.trim().toLowerCase();
-      if (users.some(function (u) { return u.email === email; })) {
-        throw new ApiError('email_taken', 'An account with this email already exists.');
-      }
-      var user = {
-        id: uid('u'),
-        name: input.name.trim(),
-        email: email,
-        role: input.role,
-        provider: 'password',
-        status: 'active',
-        createdAt: new Date().toISOString(),
-        password: input.password, // demo only: the server stores a hash, never the password
-        mustChangePassword: true,
-      };
-      users.push(user);
-      write(KEYS.users, users);
-      return publicUser(user);
+      return (await request('/api/admin/users', { method: 'POST', body: input })).user;
     },
-
     updateUser: async function (id, changes) {
-      await delay();
-      var admin = currentAdmin();
-      var users = read(KEYS.users, []);
-      var user = users.find(function (u) { return u.id === id; });
-      if (!user) throw new ApiError('not_found', 'This user no longer exists.');
-      var activeAdmins = users.filter(function (u) { return u.role === 'admin' && u.status === 'active'; });
-      var losingAdmin = user.role === 'admin' && user.status === 'active' && (changes.role === 'customer' || changes.status === 'suspended');
-      if (losingAdmin && activeAdmins.length === 1) throw new ApiError('last_admin', 'You need at least one active admin.');
-      if (id === admin.id && (changes.role === 'customer' || changes.status === 'suspended')) {
-        throw new ApiError('self', 'You cannot remove your own admin access.');
-      }
-      Object.assign(user, { name: changes.name.trim(), role: changes.role, status: changes.status });
-      write(KEYS.users, users);
-      if (id === admin.id) write(KEYS.session, Object.assign(admin, { name: user.name }));
-      return publicUser(user);
+      return (await request('/api/admin/users/' + encodeURIComponent(id), { method: 'PATCH', body: changes })).user;
     },
-
     deleteUser: async function (id) {
-      await delay();
-      var admin = currentAdmin();
-      if (id === admin.id) throw new ApiError('self', 'You cannot delete your own account here.');
-      var users = read(KEYS.users, []);
-      var target = users.find(function (u) { return u.id === id; });
-      if (!target) return;
-      if (target.role === 'admin' && users.filter(function (u) { return u.role === 'admin'; }).length === 1) {
-        throw new ApiError('last_admin', 'You need at least one admin.');
-      }
-      write(KEYS.users, users.filter(function (u) { return u.id !== id; }));
+      await request('/api/admin/users/' + encodeURIComponent(id), { method: 'DELETE' });
     },
 
-    // Products
+    // ---------- products ----------
 
     listProducts: async function () {
-      await delay();
-      currentAdmin();
-      return read(KEYS.products, []);
+      return (await request('/api/admin/products')).products.map(fromProduct);
     },
 
+    /**
+     * Creates or updates a product. `imageBlob` uploads a new photo; `removeImage` clears it.
+     */
     saveProduct: async function (input) {
-      await delay(450);
-      currentAdmin();
-      var products = read(KEYS.products, []);
-      var existing = input.id && products.find(function (p) { return p.id === input.id; });
-      var data = {
-        name: input.name.trim(),
-        price: input.price,
+      var body = {
+        name: input.name,
+        description: input.description || '',
+        priceCents: Math.round(Number(input.price) * 100),
         categoryId: input.categoryId,
         stock: input.stock,
         visible: input.visible,
-        image: input.image, // demo: compressed data URL. Live: Cloudinary URL returned by the server.
-        description: input.description.trim(),
       };
-      var saved;
-      if (existing) {
-        saved = Object.assign(existing, data);
-      } else {
-        saved = Object.assign({ id: uid('p'), createdAt: new Date().toISOString() }, data);
-        products.push(saved);
+      var saved = input.id
+        ? (await request('/api/admin/products/' + encodeURIComponent(input.id), { method: 'PATCH', body: body })).product
+        : (await request('/api/admin/products', { method: 'POST', body: body })).product;
+
+      if (input.imageBlob) {
+        var form = new FormData();
+        form.append('image', input.imageBlob, 'photo.jpg');
+        saved = (await request('/api/admin/products/' + encodeURIComponent(saved.id) + '/image', { method: 'POST', form: form })).product;
+      } else if (input.removeImage) {
+        saved = (await request('/api/admin/products/' + encodeURIComponent(saved.id) + '/image', { method: 'DELETE' })).product;
       }
-      write(KEYS.products, products);
-      return saved;
+      return fromProduct(saved);
     },
 
     deleteProduct: async function (id) {
-      await delay();
-      currentAdmin();
-      write(KEYS.products, read(KEYS.products, []).filter(function (p) { return p.id !== id; }));
+      await request('/api/admin/products/' + encodeURIComponent(id), { method: 'DELETE' });
+    },
+
+    // ---------- orders ----------
+
+    listOrders: async function () {
+      return (await request('/api/admin/orders')).orders;
+    },
+    updateOrderStatus: async function (id, status, note) {
+      return (await request('/api/admin/orders/' + encodeURIComponent(id) + '/status', {
+        method: 'POST',
+        body: { status: status, note: note || '' },
+      })).order;
     },
   };
 
-  seed();
   window.LoveNestApi = api;
   window.LoveNestApiError = ApiError;
 })();

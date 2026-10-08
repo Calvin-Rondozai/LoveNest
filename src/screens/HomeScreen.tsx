@@ -7,7 +7,7 @@ import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { SearchBar } from '../components/SearchBar';
 import { CategoryTile } from '../components/CategoryTile';
-import { categories } from '../data/catalog';
+import { useCatalog } from '../store/catalog';
 import { useUnreadCount } from '../store/notifications';
 import { useToast } from '../store/toast';
 import { openWhatsApp, WHATSAPP_DISPLAY } from '../utils/whatsapp';
@@ -27,6 +27,7 @@ export const HomeScreen = () => {
   const { colors } = useTheme();
   const [query, setQuery] = useState('');
   const unread = useUnreadCount();
+  const categories = useCatalog((s) => s.categories);
   const showToast = useToast((s) => s.show);
 
   const contactOnWhatsApp = async () => {

@@ -1,0 +1,59 @@
+# Render Blueprint: Dashboard > New > Blueprint > pick this repo.
+# One free web service runs the API and also serves the admin dashboard (/admin)
+# and the legal pages (/legal). Values marked sync: false are entered in the Render
+# dashboard when you create the Blueprint; they are never stored in git.
+
+services:
+  - type: web
+    name: lovenest-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: server
+    # Dev dependencies (TypeScript) are needed to build, then removed.
+    buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
+    # Database migrations run automatically on start.
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.20.2
+      - key: NODE_ENV
+        value: production
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: BETTER_AUTH_URL
+        sync: false # e.g. https://lovenest-api.onrender.com
+      - key: DATABASE_URL
+        sync: false # libsql://lovenest-<you>.turso.io
+      - key: DATABASE_AUTH_TOKEN
+        sync: false
+      - key: APP_SCHEME
+        value: lovenest
+      - key: ADMIN_ORIGINS
+        value: ""
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false # e.g. LoveNest <no-reply@yourdomain.com>
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: PAYNOW_INTEGRATION_ID
+        sync: false
+      - key: PAYNOW_INTEGRATION_KEY
+        sync: false
+      - key: PAYNOW_AUTH_EMAIL
+        sync: false # only while your Paynow integration is in test mode; remove when live
+      - key: SEED_ADMIN_EMAIL
+        sync: false
+      - key: SEED_ADMIN_PASSWORD
+        sync: false

@@ -8,7 +8,7 @@
 
 LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React Native. Customers browse gifts by occasion, add a personal touch, and have them delivered, paying by mobile money (EcoCash / Telecash) or cash on delivery.
 
-> **Status:** frontend complete, running on a **mock backend**. Accounts, reset codes and orders are simulated on the device. See [Backend](#backend) before going live.
+> **Status:** production-ready code. The app and admin dashboard run on the real API in [`server/`](server/README.md). To go live, create the service accounts and follow **Going live** in the server README.
 
 ---
 
@@ -18,7 +18,7 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 - Home dashboard with a search bar, a hero banner and category shortcuts. Search and **Shop Now** open the market.
 - Market (Categories tab) with an **All** view by default, category filters, and search across product names, descriptions and categories.
 - Product details, cart, and a 4-step checkout: **Cart → Delivery → Confirm → Payment**. The order is reviewed and confirmed *before* payment.
-- Order history, and an order success screen.
+- **Order tracking**: My Orders shows each order's status and a progress bar; Order Details shows a step-by-step timeline (Order placed, Confirmed, Being prepared, Out for delivery, Delivered, or Cancelled), notes from the shop, items, delivery details and payment status. Status changes arrive as in-app notifications. Pull down to refresh.
 
 **Accounts**
 - Email/password sign-up and login, plus a *Continue with Google* button (placeholder until a dev build is configured).
@@ -40,7 +40,8 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 
 **Admin dashboard** (`admin/`)
 - Separate web dashboard in HTML, CSS, JavaScript and Bootstrap 5, designed to Apple's Human Interface Guidelines.
-- **Overview**: customer, new sign-up and product counts, plus recent sign-ups and products.
+- **Overview**: open orders, customers, new sign-ups and products, an "Orders to handle" list (oldest first), recent sign-ups and products.
+- **Orders**: search by order number, customer or recipient; filter Active, Delivered, Cancelled or All. Open an order to see the customer, recipient (tap to call), items, payment and full history, then move it to the next step with an optional message to the customer, or cancel it. Orders only move forward one step at a time; delivered and cancelled orders are locked. Cash on delivery is marked paid on delivery, and cancelled paid orders are flagged "Refund due".
 - **Products**: search, filter by category, add and edit with photo upload (images are resized and compressed in the browser), hide or show in the app, delete.
 - **Users**: search, filter by role, create (with a generated temporary password), edit name, role and status, suspend or reactivate, delete. You can't delete or demote yourself or the last admin.
 - Sidebar on wide screens and a floating tab bar on phones; follows light and dark mode; 44pt tap targets; confirmation only for deletes that can't be undone.
@@ -68,21 +69,24 @@ npm start          # Expo dev server, then press a (Android), i (iOS) or w (web)
 
 Requires Node 20+. Read the [Expo SDK 57 docs](https://docs.expo.dev/versions/v57.0.0/) before changing native or Expo APIs.
 
-### Admin dashboard
+### Backend and admin dashboard
 
-The dashboard is a plain static site, so no build step is needed:
+Start the API first (see [server/README.md](server/README.md)):
 
 ```bash
-cd admin
-python -m http.server 8080      # then open http://localhost:8080
+cd server && npm install && cp .env.example .env   # fill BETTER_AUTH_SECRET and SEED_ADMIN_*
+npm run db:migrate && npm run db:seed && npm run dev
 ```
 
-In demo mode, sign in with **admin@lovenest.app** and **Admin1234**. Demo data is stored in your browser's local storage. Don't deploy it publicly until it's connected to the backend: demo mode shows those sign-in details on the login screen.
+The admin dashboard is served by the API at **http://localhost:3000/admin**. Sign in with the `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` you set.
 
-### Trying the demo flows
+Then point the app at it: copy `.env.example` to `.env` in the project root and set `EXPO_PUBLIC_API_URL` (Android emulator: `http://10.0.2.2:3000`; phone on the same Wi-Fi: `http://<your PC IP>:3000`).
 
-- **Sign up**: create any account. Accounts live in memory, so they reset when the app reloads, but your session persists.
-- **Password reset**: Forgot password → enter your email → the 6-digit **demo code appears in a pop-up** (development builds only).
+### Trying it in development
+
+- **Password reset**: Forgot password, enter your email, and the 6-digit code prints in the server terminal (until Resend is configured).
+- **Mobile money**: without Paynow keys the server simulates Paynow. Pay with `0771111111` to succeed, `0773333333` to cancel or `0774444444` for insufficient balance.
+- **Google sign-in** needs a development build (`npx expo run:android`), not Expo Go.
 - **Onboarding again**: clear the app's storage, or reinstall.
 
 ## Scripts
@@ -108,12 +112,15 @@ src/
   utils/                    validation, rateLimit, phone, whatsapp
   legal/content.ts          Single source of truth for the Privacy Policy, Terms and Refund Policy
   data/catalog.ts           Categories and products (static for now)
+  data/orderStatus.ts       Order steps shared with admin/js/orderStatus.js and the server
   theme.ts                  Colours, spacing, radii, fonts
 scripts/build-legal-site.mjs  Builds legal-site/*.html from the legal content
+server/                     Backend API (Hono, Better Auth, Drizzle, Turso); see server/README.md
 admin/                      Admin dashboard (static site)
   index.html                Sign in, app shell, pages, sheets and alerts
   css/admin.css             Apple HIG styling, light and dark palettes
-  js/api.js                 Data layer (mock today; swap in fetch() calls to the backend)
+  js/api.js                 Data layer: calls the LoveNest API (same origin)
+  js/orderStatus.js         Order steps, mirrors src/data/orderStatus.ts
   js/app.js                 UI logic, validation, routing
   vendor/                   Bootstrap 5.3.3 and Bootstrap Icons 1.11.3 (MIT)
 assets/                     App icon, splash, adaptive icons, logo (brand assets, see NOTICE)
@@ -147,11 +154,13 @@ Typography: **Poppins** for UI and **Pacifico** for script accents. The app icon
 
 Not chosen: Supabase (free projects pause after a week of inactivity), Vercel (free plan bans commercial use), Neon Auth (no official Expo support), and Fly.io, Railway and Koyeb (need a card). When the shop is earning, Render's paid plan (about $7 a month) removes the sleep issue.
 
-### Today
+### Status
 
-There is no server yet. All auth logic sits behind a mock `api` object in `src/store/auth.ts`; replace it with real HTTP calls and keep the contract: **resolve on success, throw `AuthError` on failure**. The screens need no changes.
+All six stages are built: accounts, products, orders and payments run on the API in [`server/`](server/README.md), and both the app and the admin dashboard use it. The server README has the step-by-step **Going live** guide (Turso, Resend, Cloudinary, Paynow, Google, Render, UptimeRobot). Deployment is described in `render.yaml`.
 
 The client-side checks are for user experience only. Before launch, the backend **must**:
+- own the order lifecycle: accept status changes from admins only, allow just "next step" or "cancel", and record each change with a timestamp and optional note;
+- let the app fetch the signed-in customer's orders (`GET /orders`) so admin updates appear in My Orders, and later send push notifications for each change;
 - re-validate every field and enforce its own rate limits, returning `429` + `Retry-After` (already mapped to the app's lockout UI);
 - hash passwords, expire reset codes after 10 minutes, and invalidate them after 5 wrong attempts;
 - use idempotency keys when creating orders and payments;
@@ -177,6 +186,31 @@ The source code is licensed under the [Apache License 2.0](LICENSE).
 The **LoveNest name, logo and brand images are not covered** by that licence and remain all rights reserved. See [`NOTICE`](NOTICE). Forks must use their own branding.
 
 ## Changelog
+
+### 2026-10-08 (production backend)
+- Full API: admin users, products with Cloudinary photo upload, server-priced checkout with stock reservation and idempotency keys, Paynow EcoCash/OneMoney with hash-verified results and amount checks, order status changes, customer cancellation, account deletion that keeps order records for accounting.
+- The API serves the admin dashboard at `/admin` (same origin, strict CSP) and the legal pages at `/legal`.
+- Admin dashboard now uses the real API: real sign-in, forced password change for temporary passwords, photo uploads, live users and orders. Demo data removed.
+- Mobile app now uses the real API through the Better Auth Expo client (session in SecureStore): sign-up, sign-in, Google sign-in (development build), reset codes by email, change password, delete account, live catalog with offline cache, checkout with EcoCash, OneMoney or cash, a payment waiting screen, order history and notifications for status and payment changes. Signing out wipes personal data from the device.
+- Production safety: the server refuses to start without email, photo and payment keys; development uses a terminal email log, local photo storage and a Paynow simulator.
+- Deployment: `render.yaml` (Node 20, free plan, Frankfurt), migrations and first-admin seeding on start.
+- 37 server tests; dashboard tested end to end in a browser against the real API.
+- Privacy Policy now names Paynow, Render, Turso, Resend, Cloudinary and Google, what each receives, and that data is stored in the EU and US.
+
+### 2026-10-08 (backend stage 1)
+- New `server/` backend: Hono 4, Better Auth 1.7 (email and password, 6-digit email codes, admin roles, Expo), Drizzle ORM with libSQL (local SQLite now, Turso in production).
+- Database schema for users, sessions, rate limits, categories, products, orders, order items and order events. Money stored in cents.
+- Migrations run automatically on start; idempotent seed creates the catalog and the first admin.
+- Security: validated configuration, security headers, strict CORS for the admin dashboard, body size limits, database-backed rate limits on sign-in, sign-up, reset codes and password changes.
+- 10 automated tests (health, CORS, seeding, sign-up, sign-in, rate limiting, password reset with a 6-digit code).
+- App `tsconfig.json` now excludes `server/`, `admin/` and generated folders.
+- No legal changes needed yet: nothing is deployed and no new service receives customer data. The Privacy Policy will name Turso, Render, Resend, Cloudinary and Paynow when they go live.
+
+### 2026-10-08 (orders)
+- Admin dashboard **Orders** page: list, search and filter orders, open an order, advance it to the next step with a message to the customer, or cancel it (with confirmation and a refund reminder for paid orders). Overview shows open orders and an "Orders to handle" list.
+- App: orders are now saved on the device with full details and history. New **Order Details** screen with a progress timeline, and progress bars on My Orders. Status changes create in-app notifications. Development builds include a "simulate next admin update" button until the backend connects the two.
+- Order steps are defined once per codebase (`src/data/orderStatus.ts`, `admin/js/orderStatus.js`) with matching keys.
+- Privacy Policy: order copies and progress stored on the device; delivery progress updates and team notes. Terms: order tracking in the app, and what happens when we cancel an order.
 
 ### 2026-10-08 (later)
 - Admin dashboard in `admin/`: sign in, overview, product management with photo upload, and user management (create, edit, suspend, delete). Apple HIG design, responsive from phones to desktops, light and dark mode, Bootstrap bundled locally so it works on weak connections.

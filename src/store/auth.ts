@@ -1,18 +1,21 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authClient } from '../lib/authClient';
+import { getGoogleIdToken, GoogleSignInError, signOutGoogle } from '../lib/google';
 import { POLICIES, RateLimitError, assertNotLimited, recordAttempt, clearAttempts } from '../utils/rateLimit';
 import { sanitize } from '../utils/validation';
 
 export { isValidEmail } from '../utils/validation';
 
 export type User = {
+  id: string;
   name: string;
   email: string;
   provider: 'password' | 'google';
-  /** Version of the Terms/Privacy Policy the user accepted, and when. */
+  role: 'admin' | 'customer';
+  mustChangePassword: boolean;
   acceptedTermsVersion: string;
-  acceptedAt: string;
 };
 
 export type AuthErrorCode =
@@ -20,26 +23,29 @@ export type AuthErrorCode =
   | 'email_taken'
   | 'rate_limited'
   | 'network'
+  | 'suspended'
   | 'code_invalid'
   | 'code_expired'
   | 'code_locked'
+  | 'session_expired'
+  | 'cancelled'
   | 'unknown';
 
 const MESSAGES: Record<AuthErrorCode, string> = {
   invalid_credentials: 'Incorrect email or password',
   email_taken: 'An account with this email already exists',
-  rate_limited: 'Too many attempts. Please try again later.',
+  rate_limited: 'Too many attempts. Please wait a few minutes and try again.',
   network: "Can't reach LoveNest right now. Check your connection and try again.",
+  suspended: 'This account is suspended. Contact LoveNest support.',
   code_invalid: 'Incorrect code, please try again',
   code_expired: 'This code has expired. Request a new one.',
   code_locked: 'Too many wrong codes. Request a new one.',
+  session_expired: 'For your security, please sign out, sign in again and retry.',
+  cancelled: 'Cancelled',
   unknown: 'Something went wrong. Please try again.',
 };
 
-/**
- * Every auth action rejects with an AuthError, so screens never care whether the
- * failure came from this mock, a backend 4xx/429, or the network being down.
- */
+/** Every auth action rejects with an AuthError, whatever the cause. */
 export class AuthError extends Error {
   constructor(public code: AuthErrorCode, public retryAfterMs?: number, message?: string) {
     super(message ?? MESSAGES[code]);
@@ -47,133 +53,102 @@ export class AuthError extends Error {
   }
 }
 
+type BetterAuthError = { status?: number; code?: string; message?: string } | null | undefined;
+
+/** Maps Better Auth client errors onto our codes. */
+function fromServer(error: BetterAuthError, fallback: AuthErrorCode = 'unknown'): AuthError {
+  const code = (error?.code ?? '').toUpperCase();
+  const status = error?.status ?? 0;
+  if (status === 0) return new AuthError('network');
+  if (status === 429) return new AuthError('rate_limited', 60_000);
+  if (code.includes('BANNED')) return new AuthError('suspended', undefined, error?.message);
+  if (code.includes('USER_ALREADY_EXISTS')) return new AuthError('email_taken');
+  if (code === 'INVALID_OTP') return new AuthError('code_invalid');
+  if (code === 'OTP_EXPIRED') return new AuthError('code_expired');
+  if (code === 'TOO_MANY_ATTEMPTS') return new AuthError('code_locked');
+  if (code.includes('SESSION') && (code.includes('FRESH') || code.includes('EXPIRED'))) return new AuthError('session_expired');
+  if (code === 'INVALID_EMAIL_OR_PASSWORD' || code === 'INVALID_PASSWORD' || status === 401) return new AuthError('invalid_credentials');
+  if (status === 403 && error?.message) return new AuthError('suspended', undefined, error.message);
+  return new AuthError(fallback, undefined, error?.message || undefined);
+}
+
 const toAuthError = (e: unknown): AuthError => {
   if (e instanceof AuthError) return e;
   if (e instanceof RateLimitError) return new AuthError('rate_limited', e.retryAfterMs, e.message);
-  // fetch() rejects with a TypeError when the server is unreachable.
+  if (e instanceof GoogleSignInError) return new AuthError(e.reason === 'cancelled' ? 'cancelled' : 'unknown', undefined, e.message);
   if (e instanceof TypeError) return new AuthError('network');
   return new AuthError('unknown');
 };
 
-// ---------------------------------------------------------------------------
-// Mock backend. Replace `api` with real HTTP calls. Keep the contract: resolve
-// on success, throw AuthError on failure (map HTTP 429 → 'rate_limited' with the
-// Retry-After header, 401 → 'invalid_credentials', 409 → 'email_taken').
-// ---------------------------------------------------------------------------
+type ServerUser = { id: string; name: string; email: string; role?: string | null; mustChangePassword?: boolean | null; acceptedTermsVersion?: string | null };
 
-type Account = { name: string; email: string; password: string };
-type ResetCode = { code: string; expiresAt: number; attempts: number };
+const toUser = (u: ServerUser, provider: User['provider']): User => ({
+  id: u.id,
+  name: u.name,
+  email: u.email,
+  provider,
+  role: u.role === 'admin' ? 'admin' : 'customer',
+  mustChangePassword: Boolean(u.mustChangePassword),
+  acceptedTermsVersion: u.acceptedTermsVersion ?? '',
+});
 
-const CODE_TTL_MS = 10 * 60_000;
-const MAX_CODE_ATTEMPTS = 5;
-
-// In memory only so plain-text passwords never hit device storage.
-const accounts = new Map<string, Account>();
-const resetCodes = new Map<string, ResetCode>();
-
-const delay = (ms = 600) => new Promise((resolve) => setTimeout(resolve, ms));
 const normalize = (email: string) => email.trim().toLowerCase();
-
-const api = {
-  signIn: async (email: string, password: string) => {
-    await delay();
-    const account = accounts.get(email);
-    if (!account || account.password !== password) throw new AuthError('invalid_credentials');
-    return { name: account.name, email: account.email };
-  },
-  signUp: async (name: string, email: string, password: string) => {
-    await delay();
-    if (accounts.has(email)) throw new AuthError('email_taken');
-    accounts.set(email, { name, email, password });
-    return { name, email };
-  },
-  // Real Google Sign-In needs a development build + Google Cloud OAuth client
-  // (see https://docs.expo.dev/guides/google-authentication/).
-  signInWithGoogle: async () => {
-    await delay();
-    return { name: 'Google User', email: 'google.user@gmail.com' };
-  },
-  // Always "succeeds" so the response never reveals whether an account exists.
-  // Returns the code only so the demo can show it; a real server emails it.
-  requestPasswordReset: async (email: string) => {
-    await delay();
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    resetCodes.set(email, { code, expiresAt: Date.now() + CODE_TTL_MS, attempts: 0 });
-    return code;
-  },
-  verifyResetCode: async (email: string, code: string) => {
-    await delay(400);
-    const entry = resetCodes.get(email);
-    if (!entry) throw new AuthError('code_expired');
-    if (Date.now() > entry.expiresAt) {
-      resetCodes.delete(email);
-      throw new AuthError('code_expired');
-    }
-    if (entry.code !== code) {
-      entry.attempts += 1;
-      if (entry.attempts >= MAX_CODE_ATTEMPTS) {
-        resetCodes.delete(email);
-        throw new AuthError('code_locked');
-      }
-      throw new AuthError('code_invalid');
-    }
-  },
-  resetPassword: async (email: string, password: string) => {
-    await delay();
-    const existing = accounts.get(email);
-    accounts.set(email, { name: existing?.name ?? email.split('@')[0], email, password });
-    resetCodes.delete(email);
-  },
-  changePassword: async (email: string, currentPassword: string, newPassword: string) => {
-    await delay();
-    const account = accounts.get(email);
-    // Mock-only: in-memory accounts vanish on reload while the session persists, so an
-    // unknown account is accepted here. The real server must always verify currentPassword.
-    if (account && account.password !== currentPassword) throw new AuthError('invalid_credentials', undefined, 'Your current password is incorrect');
-    accounts.set(email, { name: account?.name ?? email.split('@')[0], email, password: newPassword });
-  },
-  deleteAccount: async (email: string, password?: string) => {
-    await delay();
-    const account = accounts.get(email);
-    if (password !== undefined && account && account.password !== password) throw new AuthError('invalid_credentials');
-    accounts.delete(email);
-  },
-};
-
-// ---------------------------------------------------------------------------
+const DEVICE = 'device';
 
 type AuthState = {
   user: User | null;
+  /** Re-checks the stored session with the server at startup. */
+  restoreSession: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string, termsVersion: string) => Promise<void>;
   signInWithGoogle: (termsVersion: string) => Promise<void>;
-  signOut: () => void;
-  requestPasswordReset: (email: string) => Promise<string>;
+  signOut: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
   verifyResetCode: (email: string, code: string) => Promise<void>;
-  resetPassword: (email: string, password: string) => Promise<void>;
+  resetPassword: (email: string, code: string, password: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   deleteAccount: (password?: string) => Promise<void>;
 };
 
-const DEVICE = 'device';
+/** Registered by stores that hold personal data, so signing out wipes them from the device. */
+const signOutListeners = new Set<() => void>();
+export const onSignOut = (fn: () => void) => {
+  signOutListeners.add(fn);
+};
+const wipeLocalData = () => signOutListeners.forEach((fn) => fn());
 
 export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
 
+      restoreSession: async () => {
+        if (!get().user) return;
+        try {
+          const { data, error } = await authClient.getSession();
+          if (error) return; // offline or server down: keep the cached user for now
+          if (!data) {
+            wipeLocalData();
+            set({ user: null });
+            return;
+          }
+          set({ user: toUser(data.user as ServerUser, get().user?.provider ?? 'password') });
+        } catch {
+          // Network failure: keep the cached user.
+        }
+      },
+
       signIn: async (rawEmail, password) => {
         const email = normalize(rawEmail);
         try {
           await assertNotLimited(`login:${email}`);
           await assertNotLimited(`login:${DEVICE}`);
-          const { name } = await api.signIn(email, password);
+          const { data, error } = await authClient.signIn.email({ email, password });
+          if (error || !data) throw fromServer(error, 'invalid_credentials');
           clearAttempts(`login:${email}`);
-          // Existing accounts accepted the terms at sign-up; the backend should return that record.
-          set({ user: { name, email, provider: 'password', acceptedTermsVersion: '', acceptedAt: '' } });
+          set({ user: toUser(data.user as ServerUser, 'password') });
         } catch (e) {
           const err = toAuthError(e);
-          // Only real wrong-password responses count; an outage must not lock people out.
           if (err.code === 'invalid_credentials') {
             await recordAttempt(`login:${email}`, POLICIES.login);
             await recordAttempt(`login:${DEVICE}`, POLICIES.loginDevice);
@@ -183,38 +158,55 @@ export const useAuth = create<AuthState>()(
       },
 
       signUp: async (rawName, rawEmail, password, termsVersion) => {
-        const email = normalize(rawEmail);
-        const name = sanitize(rawName);
         try {
           await assertNotLimited(`signup:${DEVICE}`);
-          await api.signUp(name, email, password);
+          const { data, error } = await authClient.signUp.email({
+            email: normalize(rawEmail),
+            password,
+            name: sanitize(rawName),
+            acceptedTermsVersion: termsVersion,
+          });
+          if (error || !data) throw fromServer(error);
           await recordAttempt(`signup:${DEVICE}`, POLICIES.signUp);
-          set({ user: { name, email, provider: 'password', acceptedTermsVersion: termsVersion, acceptedAt: new Date().toISOString() } });
-        } catch (e) {
-          const err = toAuthError(e);
-          if (err.code === 'email_taken') await recordAttempt(`signup:${DEVICE}`, POLICIES.signUp);
-          throw err;
-        }
-      },
-
-      signInWithGoogle: async (termsVersion) => {
-        try {
-          const { name, email } = await api.signInWithGoogle();
-          set({ user: { name, email, provider: 'google', acceptedTermsVersion: termsVersion, acceptedAt: new Date().toISOString() } });
+          set({ user: toUser(data.user as ServerUser, 'password') });
         } catch (e) {
           throw toAuthError(e);
         }
       },
 
-      signOut: () => set({ user: null }),
+      // The server records the current Terms version for new Google accounts.
+      signInWithGoogle: async () => {
+        try {
+          const token = await getGoogleIdToken();
+          const { error } = await authClient.signIn.social({ provider: 'google', idToken: { token } });
+          if (error) throw fromServer(error);
+          const session = await authClient.getSession();
+          if (!session.data) throw new AuthError('unknown');
+          set({ user: toUser(session.data.user as ServerUser, 'google') });
+        } catch (e) {
+          throw toAuthError(e);
+        }
+      },
+
+      signOut: async () => {
+        try {
+          await authClient.signOut();
+        } catch {
+          // Offline: the local session is still cleared below.
+        }
+        await signOutGoogle();
+        wipeLocalData();
+        set({ user: null });
+      },
 
       requestPasswordReset: async (rawEmail) => {
         const email = normalize(rawEmail);
         try {
           await assertNotLimited(`reset:${email}`);
-          const code = await api.requestPasswordReset(email);
+          // Succeeds whether or not the email has an account, so it never reveals who is registered.
+          const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: 'forget-password' });
+          if (error) throw fromServer(error);
           await recordAttempt(`reset:${email}`, POLICIES.resetRequest);
-          return code;
         } catch (e) {
           throw toAuthError(e);
         }
@@ -224,7 +216,8 @@ export const useAuth = create<AuthState>()(
         const email = normalize(rawEmail);
         try {
           await assertNotLimited(`otp:${email}`);
-          await api.verifyResetCode(email, code);
+          const { data, error } = await authClient.emailOtp.checkVerificationOtp({ email, type: 'forget-password', otp: code });
+          if (error || !data?.success) throw error ? fromServer(error, 'code_invalid') : new AuthError('code_invalid');
           clearAttempts(`otp:${email}`);
         } catch (e) {
           const err = toAuthError(e);
@@ -233,10 +226,11 @@ export const useAuth = create<AuthState>()(
         }
       },
 
-      resetPassword: async (rawEmail, password) => {
+      resetPassword: async (rawEmail, code, password) => {
         const email = normalize(rawEmail);
         try {
-          await api.resetPassword(email, password);
+          const { error } = await authClient.emailOtp.resetPassword({ email, otp: code, password });
+          if (error) throw fromServer(error);
           clearAttempts(`login:${email}`);
         } catch (e) {
           throw toAuthError(e);
@@ -249,21 +243,27 @@ export const useAuth = create<AuthState>()(
         const key = `changepw:${user.email}`;
         try {
           await assertNotLimited(key);
-          await api.changePassword(user.email, currentPassword, newPassword);
+          const { error } = await authClient.changePassword({ currentPassword, newPassword, revokeOtherSessions: true });
+          if (error) throw fromServer(error, 'invalid_credentials');
           clearAttempts(key);
+          set({ user: { ...user, mustChangePassword: false } });
         } catch (e) {
           const err = toAuthError(e);
-          // Stops someone with an unlocked phone from guessing the current password.
-          if (err.code === 'invalid_credentials') await recordAttempt(key, POLICIES.login);
+          if (err.code === 'invalid_credentials') {
+            await recordAttempt(key, POLICIES.login);
+            throw new AuthError('invalid_credentials', undefined, 'Your current password is incorrect');
+          }
           throw err;
         }
       },
 
       deleteAccount: async (password) => {
-        const user = get().user;
-        if (!user) return;
+        if (!get().user) return;
         try {
-          await api.deleteAccount(user.email, password);
+          const { error } = await authClient.deleteUser(password ? { password } : {});
+          if (error) throw fromServer(error);
+          await signOutGoogle();
+          wipeLocalData();
           set({ user: null });
         } catch (e) {
           throw toAuthError(e);
@@ -272,8 +272,12 @@ export const useAuth = create<AuthState>()(
     }),
     {
       name: 'lovenest.auth',
+      version: 2,
       storage: createJSONStorage(() => AsyncStorage),
+      // Only the profile is cached for instant start-up; the session itself lives in SecureStore.
       partialize: (state) => ({ user: state.user }),
+      // Sessions from the old demo build cannot be valid on the real server.
+      migrate: () => ({ user: null }),
     },
   ),
 );

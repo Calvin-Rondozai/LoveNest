@@ -27,7 +27,7 @@ Forks and derivative works must replace these with their own branding.
 Third-party software
 --------------------
 This app is built with Expo and React Native and uses open-source packages
-listed in package.json, each under its own licence.
+listed in package.json and server/package.json, each under its own licence.
 
 The admin dashboard bundles, unmodified:
   Bootstrap 5.3.3          MIT License   admin/vendor/bootstrap/LICENSE

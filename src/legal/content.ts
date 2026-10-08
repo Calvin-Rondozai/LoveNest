@@ -19,9 +19,10 @@ export const LEGAL_INFO = {
   whatsapp: '+263 78 582 3025',
   country: 'Zimbabwe',
   /** Public URLs where the web versions are hosted (needed for the Play Console). */
-  privacyUrl: '[[https://your-domain/privacy]]',
-  termsUrl: '[[https://your-domain/terms]]',
-  deleteAccountUrl: '[[https://your-domain/delete-account]]',
+  // Served by the API at /legal/ once deployed, e.g. https://lovenest-api.onrender.com/legal/privacy.html
+  privacyUrl: '[[https://your-api-url/legal/privacy.html]]',
+  termsUrl: '[[https://your-api-url/legal/terms.html]]',
+  deleteAccountUrl: '[[https://your-api-url/legal/delete-account.html]]',
 };
 
 export type LegalSection = { heading: string; paragraphs?: string[]; bullets?: string[] };
@@ -55,7 +56,7 @@ const privacy: LegalDocument = {
         'Payment information: the payment method you choose (for example mobile money or cash on delivery) and transaction references. Mobile money payments are processed by the payment provider; we never see or store your mobile money PIN.',
         'Support communications: messages you send us, including through WhatsApp. Tapping a WhatsApp button opens WhatsApp with a suggested message; nothing is sent until you choose to send it, and your use of WhatsApp is governed by WhatsApp’s own privacy policy.',
         'Technical and security information: when you use our services our servers may log your IP address, device type, operating system, app version, timestamps and failed sign-in attempts, to keep the service secure and prevent fraud.',
-        'Information stored on your device: settings such as light/dark mode, your signed-in session, in-app notifications (such as order updates) and limits on repeated sign-in attempts are stored locally on your device. Signing out keeps these settings; deleting the app removes them.',
+        'Information stored on your device: settings such as light/dark mode, your signed-in session, a copy of your orders and their delivery progress, in-app notifications (such as order updates) and limits on repeated sign-in attempts are stored locally on your device. Signing out keeps these settings; deleting the app removes them.',
       ],
     },
     {
@@ -63,7 +64,7 @@ const privacy: LegalDocument = {
       bullets: [
         'To create and manage your account and sign you in.',
         'To process, deliver and support your orders, including contacting you or the recipient about a delivery.',
-        'To send service messages such as order confirmations, in-app order notifications and password reset codes.',
+        'To send service messages such as order confirmations, delivery progress updates (for example "Out for delivery"), short notes from our team about your order, and password reset codes.',
         'To protect accounts and the service, including limiting repeated sign-in attempts and detecting fraud or abuse.',
         'To meet our legal, tax and accounting obligations.',
         'To improve the app, using aggregated information that does not identify you.',
@@ -91,9 +92,9 @@ const privacy: LegalDocument = {
       ],
       bullets: [
         'Delivery partners and couriers, who receive the recipient details needed to deliver your order.',
-        'Payment providers (such as mobile money operators), to process your payment.',
+        'Paynow (Zimbabwe), our payment gateway, and your mobile money operator (EcoCash or OneMoney), which receive your order reference, amount, payment phone number and email to process the payment.',
         'Google, if you use Google Sign-In.',
-        'Hosting, database, email and messaging providers that run our services on our behalf.',
+        'Service providers that run LoveNest on our behalf and may only use the data for that purpose: Render (application hosting), Turso (database), Resend (sending emails such as password reset codes) and Cloudinary (product photos; no customer data).',
         'Authorities, courts or regulators where the law requires it, or to protect the rights, property or safety of LoveNest, our customers or others.',
         'A buyer or successor if our business is sold or restructured, subject to this policy.',
       ],
@@ -101,7 +102,7 @@ const privacy: LegalDocument = {
     {
       heading: '7. International transfers',
       paragraphs: [
-        `Some of our service providers may store or process information outside ${I.country}. Where this happens we take steps required by law to ensure your information receives an adequate level of protection.`,
+        `Our hosting, database and email providers (Render, Turso and Resend) store or process information outside ${I.country}, in the European Union and the United States. Where this happens we take the steps required by law, including contracts with these providers, to ensure your information receives an adequate level of protection.`,
       ],
     },
     {
@@ -199,6 +200,8 @@ const terms: LegalDocument = {
       heading: '6. Delivery',
       bullets: [
         'We deliver to the areas shown in the app. Delivery dates and times are estimates and may be affected by circumstances outside our control.',
+        'You can follow each order in the app under My Orders. We update its progress (confirmed, being prepared, out for delivery, delivered) as it happens and may add a short note, such as who is delivering it. Progress updates are for information and are not a guaranteed delivery time.',
+        'If we cancel your order, you will see this in the app. If you already paid, we will refund you as described in our Returns & Refunds Policy.',
         'You are responsible for giving a correct address and a reachable recipient phone number.',
         'If a delivery fails because the details were wrong or the recipient was unavailable, a redelivery fee may apply. Perishable items cannot be held indefinitely.',
       ],

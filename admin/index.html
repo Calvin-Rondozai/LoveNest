@@ -11,15 +11,7 @@
   <link rel="stylesheet" href="vendor/bootstrap/bootstrap.min.css">
   <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
   <link rel="stylesheet" href="css/admin.css">
-  <script>
-    // Follow the system light/dark appearance before first paint.
-    (function () {
-      var mq = window.matchMedia('(prefers-color-scheme: dark)');
-      var apply = function () { document.documentElement.setAttribute('data-bs-theme', mq.matches ? 'dark' : 'light'); };
-      apply();
-      mq.addEventListener('change', apply);
-    })();
-  </script>
+  <script src="js/theme.js"></script>
 </head>
 <body>
 
@@ -45,10 +37,25 @@
         <button type="submit" id="login-submit" class="btn btn-primary btn-lg w-100 mt-3">Sign In</button>
       </form>
 
-      <p id="demo-hint" class="demo-hint" hidden>
-        <i class="bi bi-info-circle" aria-hidden="true"></i>
-        Demo mode. Sign in with <strong>admin@lovenest.app</strong> and <strong>Admin1234</strong>.
-      </p>
+      <form id="password-form" novalidate hidden>
+        <p class="login-subtitle mb-3">Your account uses a temporary password. Choose your own to continue.</p>
+        <div class="grouped-fields">
+          <label class="field-row">
+            <span class="visually-hidden">Temporary password</span>
+            <input type="password" id="pw-current" class="field-input" placeholder="Temporary password" autocomplete="current-password" maxlength="128">
+          </label>
+          <label class="field-row">
+            <span class="visually-hidden">New password</span>
+            <input type="password" id="pw-new" class="field-input" placeholder="New password (8+ characters, a letter and a number)" autocomplete="new-password" maxlength="128">
+          </label>
+          <label class="field-row">
+            <span class="visually-hidden">Confirm new password</span>
+            <input type="password" id="pw-confirm" class="field-input" placeholder="Confirm new password" autocomplete="new-password" maxlength="128">
+          </label>
+        </div>
+        <p id="password-error" class="form-error" role="alert" hidden></p>
+        <button type="submit" id="password-submit" class="btn btn-primary btn-lg w-100 mt-3">Save Password</button>
+      </form>
     </div>
   </main>
 
@@ -64,6 +71,7 @@
       <p class="sidebar-section">Manage</p>
       <ul class="sidebar-list">
         <li><a href="#/overview" data-nav="overview"><i class="bi bi-house" aria-hidden="true"></i><span>Overview</span></a></li>
+        <li><a href="#/orders" data-nav="orders"><i class="bi bi-receipt" aria-hidden="true"></i><span>Orders</span></a></li>
         <li><a href="#/products" data-nav="products"><i class="bi bi-bag" aria-hidden="true"></i><span>Products</span></a></li>
         <li><a href="#/users" data-nav="users"><i class="bi bi-people" aria-hidden="true"></i><span>Users</span></a></li>
       </ul>
@@ -111,11 +119,14 @@
           </div>
 
           <div class="stat-grid">
+            <div class="stat-tile"><span class="stat-label"><i class="bi bi-receipt" aria-hidden="true"></i> Open orders</span><span class="stat-value" id="stat-open-orders">0</span></div>
             <div class="stat-tile"><span class="stat-label"><i class="bi bi-people" aria-hidden="true"></i> Customers</span><span class="stat-value" id="stat-customers">0</span></div>
             <div class="stat-tile"><span class="stat-label"><i class="bi bi-person-plus" aria-hidden="true"></i> New this week</span><span class="stat-value" id="stat-new">0</span></div>
             <div class="stat-tile"><span class="stat-label"><i class="bi bi-bag" aria-hidden="true"></i> Products</span><span class="stat-value" id="stat-products">0</span></div>
-            <div class="stat-tile"><span class="stat-label"><i class="bi bi-eye-slash" aria-hidden="true"></i> Hidden products</span><span class="stat-value" id="stat-hidden">0</span></div>
           </div>
+
+          <div class="group-header"><h2>Orders to handle</h2><a href="#/orders" class="link-tint">See All</a></div>
+          <ul class="inset-list mb-4" id="open-orders-list"></ul>
 
           <div class="row g-4">
             <div class="col-12 col-xl-6">
@@ -126,6 +137,41 @@
               <div class="group-header"><h2>Recently added products</h2><a href="#/products" class="link-tint">See All</a></div>
               <ul class="inset-list" id="recent-products"></ul>
             </div>
+          </div>
+        </section>
+
+        <!-- Orders -->
+        <section data-page="orders" hidden>
+          <div class="page-header">
+            <h1 class="large-title">Orders</h1>
+          </div>
+
+          <div class="filter-bar">
+            <label class="search-field">
+              <i class="bi bi-search" aria-hidden="true"></i>
+              <span class="visually-hidden">Search orders</span>
+              <input type="search" id="order-search" placeholder="Order number, customer or recipient" autocomplete="off" maxlength="60">
+            </label>
+            <div class="segmented" role="radiogroup" aria-label="Filter orders" id="order-filter">
+              <button type="button" role="radio" aria-checked="true" data-filter="active">Active</button>
+              <button type="button" role="radio" aria-checked="false" data-filter="delivered">Delivered</button>
+              <button type="button" role="radio" aria-checked="false" data-filter="cancelled">Cancelled</button>
+              <button type="button" role="radio" aria-checked="false" data-filter="all">All</button>
+            </div>
+          </div>
+
+          <div class="table-card" id="orders-table-card">
+            <table class="data-table">
+              <thead>
+                <tr><th scope="col">Order</th><th scope="col">Customer</th><th scope="col">Deliver to</th><th scope="col">Total</th><th scope="col">Payment</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Open</span></th></tr>
+              </thead>
+              <tbody id="order-rows"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="orders-empty" hidden>
+            <i class="bi bi-receipt" aria-hidden="true"></i>
+            <h2>No Orders</h2>
+            <p>Orders that match this filter will appear here.</p>
           </div>
         </section>
 
@@ -178,8 +224,8 @@
             </div>
           </div>
 
-          <div class="table-card">
-            <table class="user-table">
+          <div class="table-card" id="users-table-card">
+            <table class="data-table">
               <thead>
                 <tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Sign-in</th><th scope="col">Joined</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
               </thead>
@@ -198,6 +244,7 @@
     <!-- Tab bar: compact width only -->
     <nav class="tab-bar" aria-label="Main">
       <a href="#/overview" data-nav="overview"><i class="bi bi-house-fill" aria-hidden="true"></i><span>Overview</span></a>
+      <a href="#/orders" data-nav="orders"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i><span>Orders</span></a>
       <a href="#/products" data-nav="products"><i class="bi bi-bag-fill" aria-hidden="true"></i><span>Products</span></a>
       <a href="#/users" data-nav="users"><i class="bi bi-people-fill" aria-hidden="true"></i><span>Users</span></a>
     </nav>
@@ -334,6 +381,20 @@
     </div>
   </div>
 
+  <!-- ============ Order sheet ============ -->
+  <div class="modal fade" id="order-modal" tabindex="-1" aria-labelledby="order-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg modal-fullscreen-md-down">
+      <div class="modal-content sheet">
+        <div class="modal-header">
+          <button type="button" class="btn btn-plain" data-bs-dismiss="modal">Close</button>
+          <h2 class="modal-title" id="order-modal-title">Order</h2>
+          <span class="btn btn-plain invisible" aria-hidden="true">Close</span>
+        </div>
+        <div class="modal-body" id="order-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ Confirmation alert ============ -->
   <div class="modal fade" id="confirm-modal" tabindex="-1" aria-labelledby="confirm-title" aria-describedby="confirm-message" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -343,7 +404,7 @@
           <p id="confirm-message" class="alert-message"></p>
         </div>
         <div class="alert-actions">
-          <button type="button" class="alert-button" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="alert-button" id="confirm-cancel" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="alert-button alert-button-destructive" id="confirm-ok">Delete</button>
         </div>
       </div>
@@ -358,6 +419,7 @@
   </div>
 
   <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="js/orderStatus.js"></script>
   <script src="js/api.js"></script>
   <script src="js/app.js"></script>
 </body>

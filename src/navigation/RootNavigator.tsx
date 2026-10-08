@@ -10,6 +10,8 @@ import { OrderSuccessScreen } from '../screens/OrderSuccessScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
+import { OrderDetailScreen } from '../screens/OrderDetailScreen';
+import { PaymentPendingScreen } from '../screens/PaymentPendingScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignUpScreen } from '../screens/auth/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
@@ -29,6 +31,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export const RootNavigator = () => {
   const { mode, colors } = useTheme();
   const signedIn = useAuth((s) => s.user !== null);
+  // Accounts created by an admin must replace their temporary password before anything else.
+  const mustChangePassword = useAuth((s) => Boolean(s.user?.mustChangePassword));
   const seenOnboarding = useOnboarding((s) => s.seen);
   const base = mode === 'dark' ? DarkTheme : DefaultTheme;
   const navTheme = {
@@ -41,6 +45,8 @@ export const RootNavigator = () => {
       <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
         {!seenOnboarding ? (
           <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ animation: 'fade' }} />
+        ) : signedIn && mustChangePassword ? (
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} initialParams={{ forced: true }} options={{ gestureEnabled: false }} />
         ) : signedIn ? (
           <Stack.Group>
             <Stack.Screen name="Tabs" component={TabNavigator} />
@@ -51,6 +57,8 @@ export const RootNavigator = () => {
             <Stack.Screen name="PaymentMethod" component={PaymentMethodScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="OrderSuccess" component={OrderSuccessScreen} />
+            <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="PaymentPending" component={PaymentPendingScreen} options={{ gestureEnabled: false }} />
             <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ animation: 'slide_from_right' }} />
           </Stack.Group>

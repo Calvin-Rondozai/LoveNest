@@ -7,12 +7,14 @@ export type RootStackParamList = {
   Legal: { doc: LegalDocId };
   DeleteAccount: undefined;
   Notifications: undefined;
-  ChangePassword: undefined;
+  ChangePassword: { forced?: boolean } | undefined;
+  OrderDetail: { orderNumber: string };
+  PaymentPending: { orderId: string; method: 'ecocash' | 'onemoney'; phone: string };
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: { email?: string } | undefined;
   VerifyOtp: { email: string };
-  ResetPassword: { email: string };
+  ResetPassword: { email: string; otp: string };
   Tabs: NavigatorScreenParams<TabParamList>;
   ProductDetail: { productId: string };
   Cart: undefined;

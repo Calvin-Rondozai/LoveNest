@@ -13,9 +13,13 @@ export type Product = {
   name: string;
   price: number;
   categoryId: string;
-  icon: string;
-  iconSet: 'ion' | 'mci';
   description: string;
+  /** Photo URL from the server; bundled offline items use an icon instead. */
+  image?: string | null;
+  icon?: string;
+  iconSet?: 'ion' | 'mci';
+  inStock?: boolean;
+  stock?: number;
 };
 
 export const products: Product[] = [
@@ -27,6 +31,5 @@ export const products: Product[] = [
   { id: 'p6', name: 'Love Letter Card', price: 8, categoryId: 'romance', icon: 'mail', iconSet: 'ion', description: 'A handwritten-style love note card with envelope.' },
 ];
 
+// Offline fallback only. The live catalog and delivery fee come from the API (store/catalog.ts).
 export const deliveryFee = 5;
-
-export const centsPad = (amount: number) => Math.round((amount + 0.03) * 100) / 100;

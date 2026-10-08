@@ -12,11 +12,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { useStoresHydrated } from './src/store/useHydrated';
+import { useAppSync } from './src/store/sync';
 
 SplashScreen.preventAutoHideAsync();
 
 const Root = () => {
   const { mode } = useTheme();
+  useAppSync();
   return (
     <>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />

@@ -6,7 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
 import { QuantityControl } from '../components/QuantityControl';
-import { products } from '../data/catalog';
+import { ProductImage } from '../components/ProductImage';
+import { useCatalog, useProduct } from '../store/catalog';
 import { useCart } from '../store/cart';
 import { useToast } from '../store/toast';
 import { useTheme } from '../context/ThemeContext';
@@ -17,23 +18,38 @@ export const ProductDetailScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<RootStackParamList, 'ProductDetail'>>();
   const { colors } = useTheme();
-  const product = products.find((p) => p.id === route.params.productId)!;
+  const product = useProduct(route.params.productId);
+  const synced = useCatalog((s) => s.synced);
   const [quantity, setQuantity] = useState(1);
   const add = useCart((s) => s.add);
   const showToast = useToast((s) => s.show);
 
-  const addToCart = () => {
-    for (let i = 0; i < quantity; i++) add(product.id);
-  };
+  if (!product) {
+    return (
+      <SafeAreaView style={[styles.screen, { backgroundColor: colors.bg }]} edges={['top']}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.back} hitSlop={12}>
+          <Icon name="arrow-back" color={colors.text} />
+        </Pressable>
+        <View style={styles.missing}>
+          <Icon name="alert-circle-outline" size={36} color={colors.textMuted} />
+          <Text style={[styles.description, { color: colors.textMuted }]}>This product is no longer available.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const maxQty = Math.min(20, product.stock ?? 20);
+  const soldOut = product.inStock === false;
+  // Bundled offline items are only placeholders until the live catalog loads.
+  const canBuy = synced && !soldOut;
+  const addToCart = () => add(product.id, Math.min(quantity, maxQty));
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.bg }]} edges={['top']}>
       <Pressable onPress={() => navigation.goBack()} style={styles.back} hitSlop={12}>
         <Icon name="arrow-back" color={colors.text} />
       </Pressable>
-      <View style={[styles.image, { backgroundColor: colors.surfaceAlt }]}>
-        <Icon name={product.icon} iconSet={product.iconSet} size={72} color={primary} />
-      </View>
+      <ProductImage product={product} iconSize={72} style={styles.image} />
       <View style={styles.body}>
         <Text style={[styles.name, { color: colors.text }]}>{product.name}</Text>
         <Text style={styles.price}>US${product.price.toFixed(2)}</Text>
@@ -43,13 +59,20 @@ export const ProductDetailScreen = () => {
           <Text style={[styles.qtyLabel, { color: colors.text }]}>Quantity</Text>
           <QuantityControl
             quantity={quantity}
-            onIncrement={() => setQuantity((q) => q + 1)}
+            onIncrement={() => setQuantity((q) => Math.min(maxQty, q + 1))}
             onDecrement={() => setQuantity((q) => Math.max(1, q - 1))}
           />
         </View>
 
+        {!canBuy ? (
+          <Text style={[styles.unavailable, { color: colors.textMuted }]}>
+            {soldOut ? 'Sold out for now. Check back soon.' : 'Connect to the internet to shop. Products are loading.'}
+          </Text>
+        ) : null}
+
         <View style={styles.actions}>
           <Button
+            disabled={!canBuy}
             label="Add to Cart"
             icon="cart-outline"
             variant="outline"
@@ -60,6 +83,7 @@ export const ProductDetailScreen = () => {
             style={styles.actionBtn}
           />
           <Button
+            disabled={!canBuy}
             label="Buy Now"
             onPress={() => {
               addToCart();
@@ -91,5 +115,7 @@ const styles = StyleSheet.create({
   qtyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xl },
   qtyLabel: { fontSize: font.size.md, fontFamily: font.sansSemi },
   actions: { flexDirection: 'row', gap: spacing.md },
+  unavailable: { fontSize: font.size.sm, fontFamily: font.sansMedium, marginBottom: spacing.md },
+  missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.sm },
   actionBtn: { flex: 1 },
 });
