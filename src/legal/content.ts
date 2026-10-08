@@ -8,8 +8,8 @@
 // `[[…]]` placeholder in LEGAL_INFO. Bump LEGAL_VERSION whenever the text
 // changes materially so users can be asked to accept the new version.
 
-export const LEGAL_VERSION = '2026-10-07';
-export const EFFECTIVE_DATE = '7 October 2026';
+export const LEGAL_VERSION = '2026-10-08';
+export const EFFECTIVE_DATE = '8 October 2026';
 
 export const LEGAL_INFO = {
   appName: 'LoveNest Gifts',
@@ -53,9 +53,9 @@ const privacy: LegalDocument = {
         'Google Sign-In: if you choose "Continue with Google", we receive your name, email address and Google account identifier from Google. We do not receive your Google password.',
         'Order and delivery information: the items you order, recipient name, recipient phone number, delivery address, delivery instructions and any gift message you write.',
         'Payment information: the payment method you choose (for example mobile money or cash on delivery) and transaction references. Mobile money payments are processed by the payment provider; we never see or store your mobile money PIN.',
-        'Support communications: messages you send us, including through WhatsApp.',
+        'Support communications: messages you send us, including through WhatsApp. Tapping a WhatsApp button opens WhatsApp with a suggested message; nothing is sent until you choose to send it, and your use of WhatsApp is governed by WhatsApp’s own privacy policy.',
         'Technical and security information: when you use our services our servers may log your IP address, device type, operating system, app version, timestamps and failed sign-in attempts, to keep the service secure and prevent fraud.',
-        'Preferences stored on your device: settings such as light/dark mode and your signed-in session are stored locally on your device.',
+        'Information stored on your device: settings such as light/dark mode, your signed-in session, in-app notifications (such as order updates) and limits on repeated sign-in attempts are stored locally on your device. Signing out keeps these settings; deleting the app removes them.',
       ],
     },
     {
@@ -63,7 +63,7 @@ const privacy: LegalDocument = {
       bullets: [
         'To create and manage your account and sign you in.',
         'To process, deliver and support your orders, including contacting you or the recipient about a delivery.',
-        'To send service messages such as order confirmations and password reset codes.',
+        'To send service messages such as order confirmations, in-app order notifications and password reset codes.',
         'To protect accounts and the service, including limiting repeated sign-in attempts and detecting fraud or abuse.',
         'To meet our legal, tax and accounting obligations.',
         'To improve the app, using aggregated information that does not identify you.',
@@ -181,7 +181,7 @@ const terms: LegalDocument = {
       bullets: [
         'Prices are shown in US dollars (US$) and include the delivery fee shown at checkout.',
         'Product photos are illustrative. Flowers, cakes and similar items may vary slightly in colour, size or arrangement; we may substitute an item of similar style and equal or greater value if something is unavailable.',
-        'Placing an order is an offer to buy. A contract is formed when we confirm your order.',
+        'Before paying, you review your items, delivery details and total and confirm they are correct. Completing the payment step (or choosing cash on delivery) is an offer to buy, and a contract is formed when we confirm your order.',
         'We may refuse or cancel an order, for example if an item is unavailable, a price was shown in error, payment fails, or we suspect fraud. If we cancel after you have paid, we will refund you in full.',
       ],
     },
@@ -222,7 +222,8 @@ const terms: LegalDocument = {
     {
       heading: '10. Intellectual property',
       paragraphs: [
-        'The app, the LoveNest name and logo, and all content we provide are owned by us or our licensors. We grant you a personal, non-transferable, revocable licence to use the app for its intended purpose.',
+        'The LoveNest name, logo, product images and other content we provide are owned by us or our licensors. We grant you a personal, non-transferable, revocable licence to use the app for its intended purpose.',
+        'The app’s source code is made available under the Apache License 2.0. That licence covers the code only; it does not give anyone the right to use the LoveNest name, logo or other brand assets, or to present a modified version as the official LoveNest app.',
       ],
     },
     {

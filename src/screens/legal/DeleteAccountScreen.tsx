@@ -10,7 +10,7 @@ import { useCart } from '../../store/cart';
 import { useCheckout } from '../../store/checkout';
 import { useToast } from '../../store/toast';
 import { useTheme } from '../../context/ThemeContext';
-import { font, radii, spacing, danger } from '../../theme';
+import { font, radii, spacing, primary, danger } from '../../theme';
 
 const WILL_DELETE = [
   'Your profile, name and email address',
@@ -63,7 +63,7 @@ export const DeleteAccountScreen = () => {
         <Text style={[styles.cardTitle, { color: colors.text }]}>What will be deleted</Text>
         {WILL_DELETE.map((item) => (
           <View key={item} style={styles.row}>
-            <Icon name="close-circle-outline" size={16} color={danger} />
+            <Icon name="close-circle-outline" size={16} color={primary} />
             <Text style={[styles.rowText, { color: colors.textMuted }]}>{item}</Text>
           </View>
         ))}
@@ -97,7 +97,6 @@ export const DeleteAccountScreen = () => {
         icon="trash-outline"
         onPress={submit}
         disabled={loading}
-        style={styles.button}
       />
     </AuthLayout>
   );
@@ -110,5 +109,4 @@ const styles = StyleSheet.create({
   rowText: { fontSize: font.size.sm, fontFamily: font.sans },
   note: { fontSize: font.size.xs, fontFamily: font.sans, marginTop: spacing.sm, lineHeight: 18 },
   formError: { color: danger, fontSize: font.size.sm, fontFamily: font.sansMedium, textAlign: 'center', marginBottom: spacing.md },
-  button: { backgroundColor: danger },
 });

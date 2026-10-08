@@ -8,7 +8,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../store/auth';
 import { openWhatsApp } from '../utils/whatsapp';
 import { LegalDocId } from '../legal/content';
-import { font, radii, spacing, primary, onPrimary, danger } from '../theme';
+import { font, radii, spacing, primary, onPrimary } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 
 
@@ -85,13 +85,13 @@ type RowProps = { icon: string; label: string; onPress: () => void; destructive?
 
 const Row = ({ icon, label, onPress, destructive, last }: RowProps) => {
   const { colors } = useTheme();
-  const tint = destructive ? danger : colors.text;
+  const tint = destructive ? primary : colors.text;
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.row, !last && { borderBottomWidth: 1, borderBottomColor: colors.border }, pressed && { opacity: 0.6 }]}
     >
-      <Icon name={icon} size={18} color={destructive ? danger : primary} />
+      <Icon name={icon} size={18} color={primary} />
       <Text style={[styles.rowLabel, { color: tint }]}>{label}</Text>
       <Icon name="chevron-forward" size={16} color={colors.textMuted} />
     </Pressable>

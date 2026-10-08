@@ -1,0 +1,28 @@
+LoveNest Gifts
+Copyright 2026 Calvin Rondozai
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Trademarks and brand assets
+---------------------------
+The Apache License does not grant permission to use the "LoveNest" and
+"LoveNest Gifts" names, the LoveNest heart logo, or other trade names,
+trademarks or service marks (see Section 6 of the License).
+
+The following files are brand assets and are NOT licensed under the Apache
+License. All rights reserved:
+
+  assets/logo.png
+  assets/icon.png
+  assets/splash-icon.png
+  assets/favicon.png
+  assets/android-icon-*.png
+  assets/play-store-icon-512.png
+  assets/hero-gift.png
+
+Forks and derivative works must replace these with their own branding.
+
+Third-party software
+--------------------
+This app is built with Expo and React Native and uses open-source packages
+listed in package.json, each under its own licence.
