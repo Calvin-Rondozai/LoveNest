@@ -2,9 +2,9 @@
 // LegalScreen and exported to public web pages by `npm run legal:site`
 // (Google Play requires a public Privacy Policy URL and account-deletion URL).
 //
-// Keep this file free of runtime imports — the site builder loads it standalone.
+// Keep this file free of runtime imports; the site builder loads it standalone.
 //
-// ⚠️ Have these reviewed by a lawyer before launch, and fill in every
+// IMPORTANT: Have these reviewed by a lawyer before launch, and fill in every
 // `[[…]]` placeholder in LEGAL_INFO. Bump LEGAL_VERSION whenever the text
 // changes materially so users can be asked to accept the new version.
 
@@ -85,7 +85,10 @@ const privacy: LegalDocument = {
     },
     {
       heading: '6. Who we share information with',
-      paragraphs: ['We share personal information only where needed, and require these parties to protect it:'],
+      paragraphs: [
+        'Within LoveNest, only authorised administrators can access account, order and product information, through a password-protected admin dashboard, and only to run the service: for example to help with an order, answer a support request, create an account on your behalf, or suspend or delete an account. Administrator access is limited to what is needed for these tasks.',
+        'We share personal information outside LoveNest only where needed, and require these parties to protect it:',
+      ],
       bullets: [
         'Delivery partners and couriers, who receive the recipient details needed to deliver your order.',
         'Payment providers (such as mobile money operators), to process your payment.',
@@ -171,7 +174,8 @@ const terms: LegalDocument = {
       heading: '3. Your account',
       bullets: [
         'Provide accurate, current information and keep it up to date.',
-        'Keep your password confidential. You are responsible for activity on your account.',
+        'Keep your password confidential. You are responsible for activity on your account. You can change your password at any time in the app under Profile, Change Password.',
+        'If we create an account for you, we will give you a temporary password, and you must choose a new one the first time you sign in.',
         'Tell us immediately if you suspect unauthorised use of your account.',
         'We may limit repeated sign-in, verification or ordering attempts to protect accounts and the service.',
       ],
@@ -236,7 +240,7 @@ const terms: LegalDocument = {
     {
       heading: '12. Suspension and termination',
       paragraphs: [
-        'You may stop using the app and delete your account at any time. We may suspend or close accounts that breach these Terms or that we reasonably believe are being used for fraud or abuse.',
+        'You may stop using the app and delete your account at any time. We may suspend or close accounts that breach these Terms or that we reasonably believe are being used for fraud or abuse. A suspended account cannot sign in or place orders until it is reactivated. If you believe your account was suspended by mistake, contact us.',
       ],
     },
     {

@@ -7,6 +7,7 @@ export type RootStackParamList = {
   Legal: { doc: LegalDocId };
   DeleteAccount: undefined;
   Notifications: undefined;
+  ChangePassword: undefined;
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: { email?: string } | undefined;

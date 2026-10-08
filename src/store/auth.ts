@@ -56,7 +56,7 @@ const toAuthError = (e: unknown): AuthError => {
 };
 
 // ---------------------------------------------------------------------------
-// Mock backend — replace `api` with real HTTP calls. Keep the contract: resolve
+// Mock backend. Replace `api` with real HTTP calls. Keep the contract: resolve
 // on success, throw AuthError on failure (map HTTP 429 → 'rate_limited' with the
 // Retry-After header, 401 → 'invalid_credentials', 409 → 'email_taken').
 // ---------------------------------------------------------------------------
@@ -124,6 +124,14 @@ const api = {
     accounts.set(email, { name: existing?.name ?? email.split('@')[0], email, password });
     resetCodes.delete(email);
   },
+  changePassword: async (email: string, currentPassword: string, newPassword: string) => {
+    await delay();
+    const account = accounts.get(email);
+    // Mock-only: in-memory accounts vanish on reload while the session persists, so an
+    // unknown account is accepted here. The real server must always verify currentPassword.
+    if (account && account.password !== currentPassword) throw new AuthError('invalid_credentials', undefined, 'Your current password is incorrect');
+    accounts.set(email, { name: account?.name ?? email.split('@')[0], email, password: newPassword });
+  },
   deleteAccount: async (email: string, password?: string) => {
     await delay();
     const account = accounts.get(email);
@@ -143,6 +151,7 @@ type AuthState = {
   requestPasswordReset: (email: string) => Promise<string>;
   verifyResetCode: (email: string, code: string) => Promise<void>;
   resetPassword: (email: string, password: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   deleteAccount: (password?: string) => Promise<void>;
 };
 
@@ -164,7 +173,7 @@ export const useAuth = create<AuthState>()(
           set({ user: { name, email, provider: 'password', acceptedTermsVersion: '', acceptedAt: '' } });
         } catch (e) {
           const err = toAuthError(e);
-          // Only real wrong-password responses count — an outage must not lock people out.
+          // Only real wrong-password responses count; an outage must not lock people out.
           if (err.code === 'invalid_credentials') {
             await recordAttempt(`login:${email}`, POLICIES.login);
             await recordAttempt(`login:${DEVICE}`, POLICIES.loginDevice);
@@ -231,6 +240,22 @@ export const useAuth = create<AuthState>()(
           clearAttempts(`login:${email}`);
         } catch (e) {
           throw toAuthError(e);
+        }
+      },
+
+      changePassword: async (currentPassword, newPassword) => {
+        const user = get().user;
+        if (!user) return;
+        const key = `changepw:${user.email}`;
+        try {
+          await assertNotLimited(key);
+          await api.changePassword(user.email, currentPassword, newPassword);
+          clearAttempts(key);
+        } catch (e) {
+          const err = toAuthError(e);
+          // Stops someone with an unlocked phone from guessing the current password.
+          if (err.code === 'invalid_credentials') await recordAttempt(key, POLICIES.login);
+          throw err;
         }
       },
 

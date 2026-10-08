@@ -4,7 +4,7 @@
 
 <h1 align="center">LoveNest Gifts</h1>
 
-<p align="center"><em>Gifts for every moment — delivered with love.</em></p>
+<p align="center"><em>Gifts for every moment, delivered with love.</em></p>
 
 LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React Native. Customers browse gifts by occasion, add a personal touch, and have them delivered, paying by mobile money (EcoCash / Telecash) or cash on delivery.
 
@@ -24,6 +24,7 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 - Email/password sign-up and login, plus a *Continue with Google* button (placeholder until a dev build is configured).
 - Forgot password with a **6-digit code**. The boxes turn green when the code is right and shake red when it's wrong; codes expire after 10 minutes.
 - Signing up requires accepting the Terms and Privacy Policy and confirming age 18+. The accepted version is recorded.
+- **Change Password** in Profile for email accounts. You confirm your current password, and wrong guesses lead to a lockout.
 - In-app **Delete Account**, as Google Play requires.
 
 **Security**
@@ -37,6 +38,13 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 - One-tap WhatsApp chat with the shop, with a pre-filled message.
 - Light and dark mode.
 
+**Admin dashboard** (`admin/`)
+- Separate web dashboard in HTML, CSS, JavaScript and Bootstrap 5, designed to Apple's Human Interface Guidelines.
+- **Overview**: customer, new sign-up and product counts, plus recent sign-ups and products.
+- **Products**: search, filter by category, add and edit with photo upload (images are resized and compressed in the browser), hide or show in the app, delete.
+- **Users**: search, filter by role, create (with a generated temporary password), edit name, role and status, suspend or reactivate, delete. You can't delete or demote yourself or the last admin.
+- Sidebar on wide screens and a floating tab bar on phones; follows light and dark mode; 44pt tap targets; confirmation only for deletes that can't be undone.
+
 **Legal**
 - Privacy Policy, Terms of Use and Returns & Refunds Policy in the app (Profile → Legal & Account) and as generated public web pages.
 
@@ -49,6 +57,7 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 | State | Zustand, persisted with AsyncStorage |
 | Fonts | Poppins + Pacifico (`@expo-google-fonts`) |
 | Icons | `@expo/vector-icons` (Ionicons, MaterialCommunityIcons) |
+| Admin dashboard | HTML, CSS, vanilla JavaScript, Bootstrap 5.3 and Bootstrap Icons (bundled in `admin/vendor`) |
 
 ## Getting started
 
@@ -58,6 +67,17 @@ npm start          # Expo dev server, then press a (Android), i (iOS) or w (web)
 ```
 
 Requires Node 20+. Read the [Expo SDK 57 docs](https://docs.expo.dev/versions/v57.0.0/) before changing native or Expo APIs.
+
+### Admin dashboard
+
+The dashboard is a plain static site, so no build step is needed:
+
+```bash
+cd admin
+python -m http.server 8080      # then open http://localhost:8080
+```
+
+In demo mode, sign in with **admin@lovenest.app** and **Admin1234**. Demo data is stored in your browser's local storage. Don't deploy it publicly until it's connected to the backend: demo mode shows those sign-in details on the login screen.
 
 ### Trying the demo flows
 
@@ -90,6 +110,12 @@ src/
   data/catalog.ts           Categories and products (static for now)
   theme.ts                  Colours, spacing, radii, fonts
 scripts/build-legal-site.mjs  Builds legal-site/*.html from the legal content
+admin/                      Admin dashboard (static site)
+  index.html                Sign in, app shell, pages, sheets and alerts
+  css/admin.css             Apple HIG styling, light and dark palettes
+  js/api.js                 Data layer (mock today; swap in fetch() calls to the backend)
+  js/app.js                 UI logic, validation, routing
+  vendor/                   Bootstrap 5.3.3 and Bootstrap Icons 1.11.3 (MIT)
 assets/                     App icon, splash, adaptive icons, logo (brand assets, see NOTICE)
 PLAY_STORE.md               Google Play launch checklist and Data safety answers
 ```
@@ -106,6 +132,22 @@ PLAY_STORE.md               Google Play launch checklist and Data safety answers
 Typography: **Poppins** for UI and **Pacifico** for script accents. The app icon, splash screen and Android adaptive/monochrome icons are all generated from `assets/logo.png`.
 
 ## Backend
+
+### Chosen stack (all free, no credit card required)
+
+| Piece | Service |
+|---|---|
+| Database (users, products, orders) | **Turso** (5 GB free), accessed through Drizzle so it can move to Postgres later |
+| Product photos | **Cloudinary** (25 free credits a month, automatic resizing for mobile) |
+| Server (login, payments, admin API) | **Render** free web service, kept awake by an **UptimeRobot** ping |
+| Login | **Better Auth** on that server: email and password, Google sign-in (native, via ID token), 6-digit reset codes |
+| Payments | **Paynow** (EcoCash, OneMoney, InnBucks, cards). The integration key stays on the server; orders are only marked paid after the server confirms with Paynow |
+| Emails | **Resend** (3,000 a month, 100 a day) |
+| Google sign-in setup | Google Cloud Console OAuth client IDs (Web + Android); free, no billing |
+
+Not chosen: Supabase (free projects pause after a week of inactivity), Vercel (free plan bans commercial use), Neon Auth (no official Expo support), and Fly.io, Railway and Koyeb (need a card). When the shop is earning, Render's paid plan (about $7 a month) removes the sleep issue.
+
+### Today
 
 There is no server yet. All auth logic sits behind a mock `api` object in `src/store/auth.ts`; replace it with real HTTP calls and keep the contract: **resolve on success, throw `AuthError` on failure**. The screens need no changes.
 
@@ -135,6 +177,13 @@ The source code is licensed under the [Apache License 2.0](LICENSE).
 The **LoveNest name, logo and brand images are not covered** by that licence and remain all rights reserved. See [`NOTICE`](NOTICE). Forks must use their own branding.
 
 ## Changelog
+
+### 2026-10-08 (later)
+- Admin dashboard in `admin/`: sign in, overview, product management with photo upload, and user management (create, edit, suspend, delete). Apple HIG design, responsive from phones to desktops, light and dark mode, Bootstrap bundled locally so it works on weak connections.
+- **Change Password** screen in the app (Profile, Legal & Account), with lockout after repeated wrong current passwords.
+- Removed all em dashes and emojis from the app, docs and generated pages.
+- Backend stack finalized (see [Backend](#backend)).
+- Privacy Policy: explains administrator access through the admin dashboard. Terms: password changes, accounts created by LoveNest with temporary passwords, and what suspension means.
 
 ### 2026-10-08
 - Licensed under Apache 2.0 with a NOTICE excluding brand assets; added this README.

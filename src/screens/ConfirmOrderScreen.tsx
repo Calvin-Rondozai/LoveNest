@@ -15,7 +15,7 @@ import { useTheme } from '../context/ThemeContext';
 import { font, radii, spacing, primary, onPrimary, danger } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 
-/** Step 3 — review everything and agree to the terms *before* choosing how to pay. */
+/** Step 3: review everything and agree to the terms *before* choosing how to pay. */
 export const ConfirmOrderScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();

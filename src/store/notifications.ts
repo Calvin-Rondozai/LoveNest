@@ -29,7 +29,7 @@ const MAX_ITEMS = 50;
 
 const welcome: AppNotification = {
   id: 'welcome',
-  title: 'Welcome to LoveNest 💝',
+  title: 'Welcome to LoveNest',
   body: 'Browse gifts for every moment and get them delivered with love.',
   icon: 'heart-outline',
   createdAt: new Date().toISOString(),

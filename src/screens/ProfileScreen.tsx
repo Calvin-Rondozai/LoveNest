@@ -54,6 +54,9 @@ export const ProfileScreen = () => {
 
         <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Legal & Account</Text>
         <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {user?.provider === 'password' ? (
+            <Row icon="key-outline" label="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
+          ) : null}
           {LEGAL_LINKS.map((link) => (
             <Row
               key={link.doc}

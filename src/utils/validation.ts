@@ -1,4 +1,4 @@
-// Shared form rules. The backend must re-validate everything — these exist for
+// Shared form rules. The backend must re-validate everything; these exist for
 // fast feedback and to stop obviously bad data leaving the device.
 
 export const LIMITS = {

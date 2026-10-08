@@ -93,4 +93,4 @@ writeFileSync(
 );
 
 console.log(`Legal site written to ${outDir}`);
-if (hasPlaceholders()) console.warn('⚠️  LEGAL_INFO in src/legal/content.ts still has [[placeholders]] — fill them in before publishing.');
+if (hasPlaceholders()) console.warn('Warning: LEGAL_INFO in src/legal/content.ts still has [[placeholders]]. Fill them in before publishing.');

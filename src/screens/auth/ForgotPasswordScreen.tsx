@@ -33,7 +33,7 @@ export const ForgotPasswordScreen = () => {
     setLoading(true);
     try {
       const code = await requestPasswordReset(email);
-      // No email service yet — surface the code in development so the flow is testable.
+      // No email service yet, so surface the code in development so the flow is testable.
       if (__DEV__) showToast(`Demo code: ${code}`, 6000);
       navigation.navigate('VerifyOtp', { email: email.trim() });
     } catch (e) {

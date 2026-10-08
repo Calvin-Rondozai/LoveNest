@@ -31,7 +31,7 @@ export const ResetPasswordScreen = () => {
     setLoading(true);
     try {
       await resetPassword(email, password);
-      showToast('Password updated — please log in');
+      showToast('Password updated. Please log in.');
       navigation.popTo('Login');
     } catch (e) {
       setErrors({ form: (e as AuthError).message });

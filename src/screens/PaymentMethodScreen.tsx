@@ -24,7 +24,7 @@ const methods: { id: PaymentMethod; label: string; sublabel: string; icon: strin
 
 const generateOrderNumber = () => `#LNG${Math.floor(100000 + Math.random() * 900000)}`;
 
-/** Step 4 — the order was already reviewed and confirmed; choosing a method and paying is the last action. */
+/** Step 4: the order was already reviewed and confirmed; choosing a method and paying is the last action. */
 export const PaymentMethodScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();

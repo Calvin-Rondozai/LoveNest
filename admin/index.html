@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+  <title>LoveNest Admin</title>
+  <link rel="icon" href="img/favicon.png">
+  <link rel="stylesheet" href="vendor/bootstrap/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <script>
+    // Follow the system light/dark appearance before first paint.
+    (function () {
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var apply = function () { document.documentElement.setAttribute('data-bs-theme', mq.matches ? 'dark' : 'light'); };
+      apply();
+      mq.addEventListener('change', apply);
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- ============ Sign in ============ -->
+  <main id="login-view" class="login-view" hidden>
+    <div class="login-card">
+      <img src="img/logo.png" alt="" class="login-logo" width="64" height="64">
+      <h1 class="login-title">LoveNest Admin</h1>
+      <p class="login-subtitle">Sign in to manage products and customers.</p>
+
+      <form id="login-form" novalidate>
+        <div class="grouped-fields">
+          <label class="field-row">
+            <span class="visually-hidden">Email</span>
+            <input type="email" id="login-email" class="field-input" placeholder="Email" autocomplete="username" required maxlength="254">
+          </label>
+          <label class="field-row">
+            <span class="visually-hidden">Password</span>
+            <input type="password" id="login-password" class="field-input" placeholder="Password" autocomplete="current-password" required maxlength="128">
+          </label>
+        </div>
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+        <button type="submit" id="login-submit" class="btn btn-primary btn-lg w-100 mt-3">Sign In</button>
+      </form>
+
+      <p id="demo-hint" class="demo-hint" hidden>
+        <i class="bi bi-info-circle" aria-hidden="true"></i>
+        Demo mode. Sign in with <strong>admin@lovenest.app</strong> and <strong>Admin1234</strong>.
+      </p>
+    </div>
+  </main>
+
+  <!-- ============ App shell ============ -->
+  <div id="app-view" class="app-shell" hidden>
+
+    <!-- Sidebar: regular width only -->
+    <nav id="sidebar" class="sidebar" aria-label="Main">
+      <div class="sidebar-brand">
+        <img src="img/logo.png" alt="" width="32" height="32">
+        <span>Love<span class="text-tint">Nest</span></span>
+      </div>
+      <p class="sidebar-section">Manage</p>
+      <ul class="sidebar-list">
+        <li><a href="#/overview" data-nav="overview"><i class="bi bi-house" aria-hidden="true"></i><span>Overview</span></a></li>
+        <li><a href="#/products" data-nav="products"><i class="bi bi-bag" aria-hidden="true"></i><span>Products</span></a></li>
+        <li><a href="#/users" data-nav="users"><i class="bi bi-people" aria-hidden="true"></i><span>Users</span></a></li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="account-chip">
+          <i class="bi bi-person-circle" aria-hidden="true"></i>
+          <div class="account-text">
+            <span class="account-name" data-admin-name></span>
+            <span class="account-email" data-admin-email></span>
+          </div>
+        </div>
+        <button type="button" class="btn btn-plain w-100 justify-content-start" data-action="sign-out">
+          <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Sign Out
+        </button>
+      </div>
+    </nav>
+
+    <div class="main-column">
+      <!-- Toolbar -->
+      <header class="toolbar">
+        <button type="button" class="icon-button d-none d-lg-inline-flex" id="sidebar-toggle" aria-label="Hide sidebar" aria-controls="sidebar" aria-expanded="true">
+          <i class="bi bi-layout-sidebar" aria-hidden="true"></i>
+        </button>
+        <span class="toolbar-title" id="toolbar-title" aria-hidden="true"></span>
+        <div class="toolbar-actions">
+          <div class="dropdown d-lg-none">
+            <button type="button" class="icon-button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account">
+              <i class="bi bi-person-circle" aria-hidden="true"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><span class="dropdown-item-text small"><strong data-admin-name></strong><br><span class="text-secondary-label" data-admin-email></span></span></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><button type="button" class="dropdown-item" data-action="sign-out"><i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Sign Out</button></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+
+      <main class="content" id="content" tabindex="-1">
+
+        <!-- Overview -->
+        <section data-page="overview" hidden>
+          <div class="page-header">
+            <h1 class="large-title">Overview</h1>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat-tile"><span class="stat-label"><i class="bi bi-people" aria-hidden="true"></i> Customers</span><span class="stat-value" id="stat-customers">0</span></div>
+            <div class="stat-tile"><span class="stat-label"><i class="bi bi-person-plus" aria-hidden="true"></i> New this week</span><span class="stat-value" id="stat-new">0</span></div>
+            <div class="stat-tile"><span class="stat-label"><i class="bi bi-bag" aria-hidden="true"></i> Products</span><span class="stat-value" id="stat-products">0</span></div>
+            <div class="stat-tile"><span class="stat-label"><i class="bi bi-eye-slash" aria-hidden="true"></i> Hidden products</span><span class="stat-value" id="stat-hidden">0</span></div>
+          </div>
+
+          <div class="row g-4">
+            <div class="col-12 col-xl-6">
+              <div class="group-header"><h2>Recent sign-ups</h2><a href="#/users" class="link-tint">See All</a></div>
+              <ul class="inset-list" id="recent-users"></ul>
+            </div>
+            <div class="col-12 col-xl-6">
+              <div class="group-header"><h2>Recently added products</h2><a href="#/products" class="link-tint">See All</a></div>
+              <ul class="inset-list" id="recent-products"></ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- Products -->
+        <section data-page="products" hidden>
+          <div class="page-header">
+            <h1 class="large-title">Products</h1>
+            <button type="button" class="btn btn-primary" data-action="new-product">
+              <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Add Product</span>
+            </button>
+          </div>
+
+          <div class="filter-bar">
+            <label class="search-field">
+              <i class="bi bi-search" aria-hidden="true"></i>
+              <span class="visually-hidden">Search products</span>
+              <input type="search" id="product-search" placeholder="Search" autocomplete="off" maxlength="60">
+            </label>
+            <label class="visually-hidden" for="product-category-filter">Category</label>
+            <select id="product-category-filter" class="form-select filter-select"></select>
+          </div>
+
+          <div class="product-grid" id="product-grid"></div>
+          <div class="empty-state" id="products-empty" hidden>
+            <i class="bi bi-bag" aria-hidden="true"></i>
+            <h2>No Products</h2>
+            <p>Try a different search, or add your first product.</p>
+          </div>
+        </section>
+
+        <!-- Users -->
+        <section data-page="users" hidden>
+          <div class="page-header">
+            <h1 class="large-title">Users</h1>
+            <button type="button" class="btn btn-primary" data-action="new-user">
+              <i class="bi bi-person-plus" aria-hidden="true"></i><span>Add User</span>
+            </button>
+          </div>
+
+          <div class="filter-bar">
+            <label class="search-field">
+              <i class="bi bi-search" aria-hidden="true"></i>
+              <span class="visually-hidden">Search users</span>
+              <input type="search" id="user-search" placeholder="Search by name or email" autocomplete="off" maxlength="60">
+            </label>
+            <div class="segmented" role="radiogroup" aria-label="Filter by role" id="user-role-filter">
+              <button type="button" role="radio" aria-checked="true" data-role="all">All</button>
+              <button type="button" role="radio" aria-checked="false" data-role="customer">Customers</button>
+              <button type="button" role="radio" aria-checked="false" data-role="admin">Admins</button>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <table class="user-table">
+              <thead>
+                <tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Sign-in</th><th scope="col">Joined</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
+              </thead>
+              <tbody id="user-rows"></tbody>
+            </table>
+          </div>
+          <div class="empty-state" id="users-empty" hidden>
+            <i class="bi bi-people" aria-hidden="true"></i>
+            <h2>No Users Found</h2>
+            <p>Try a different search or filter.</p>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Tab bar: compact width only -->
+    <nav class="tab-bar" aria-label="Main">
+      <a href="#/overview" data-nav="overview"><i class="bi bi-house-fill" aria-hidden="true"></i><span>Overview</span></a>
+      <a href="#/products" data-nav="products"><i class="bi bi-bag-fill" aria-hidden="true"></i><span>Products</span></a>
+      <a href="#/users" data-nav="users"><i class="bi bi-people-fill" aria-hidden="true"></i><span>Users</span></a>
+    </nav>
+  </div>
+
+  <!-- ============ Product sheet ============ -->
+  <div class="modal fade" id="product-modal" tabindex="-1" aria-labelledby="product-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+      <form class="modal-content sheet" id="product-form" novalidate>
+        <div class="modal-header">
+          <button type="button" class="btn btn-plain" data-bs-dismiss="modal">Cancel</button>
+          <h2 class="modal-title" id="product-modal-title">New Product</h2>
+          <button type="submit" class="btn btn-plain fw-semibold" id="product-save">Save</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="product-id">
+
+          <p class="group-label">Photo</p>
+          <div class="image-drop" id="image-drop" tabindex="0" role="button" aria-label="Choose a product photo">
+            <img id="image-preview" alt="Product photo preview" hidden>
+            <div class="image-drop-empty" id="image-empty">
+              <i class="bi bi-image" aria-hidden="true"></i>
+              <span>Drop a photo here or <span class="text-tint">choose a file</span></span>
+              <small>JPG, PNG or WebP, up to 5 MB</small>
+            </div>
+          </div>
+          <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" hidden>
+          <div class="d-flex gap-3 mt-2" id="image-actions" hidden>
+            <button type="button" class="btn btn-plain px-0" id="image-change"><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Replace</button>
+            <button type="button" class="btn btn-plain btn-destructive px-0" id="image-remove"><i class="bi bi-trash" aria-hidden="true"></i> Remove</button>
+          </div>
+          <p class="field-error" data-error-for="image" hidden></p>
+
+          <p class="group-label">Details</p>
+          <div class="grouped-fields">
+            <label class="field-row">
+              <span class="field-label">Name</span>
+              <input type="text" id="product-name" class="field-input" placeholder="Red Rose Bouquet" maxlength="80" required>
+            </label>
+            <label class="field-row">
+              <span class="field-label">Price (US$)</span>
+              <input type="text" id="product-price" class="field-input" inputmode="decimal" placeholder="0.00" maxlength="9" required>
+            </label>
+            <label class="field-row">
+              <span class="field-label">Category</span>
+              <select id="product-category" class="field-input field-select" required></select>
+            </label>
+            <label class="field-row">
+              <span class="field-label">In stock</span>
+              <input type="text" id="product-stock" class="field-input" inputmode="numeric" placeholder="0" maxlength="5">
+            </label>
+          </div>
+          <p class="field-error" data-error-for="name" hidden></p>
+          <p class="field-error" data-error-for="price" hidden></p>
+          <p class="field-error" data-error-for="categoryId" hidden></p>
+          <p class="field-error" data-error-for="stock" hidden></p>
+
+          <p class="group-label">Description <span class="counter" id="desc-counter">0/500</span></p>
+          <div class="grouped-fields">
+            <textarea id="product-description" class="field-input field-textarea" rows="4" maxlength="500" placeholder="What makes this gift special?"></textarea>
+          </div>
+          <p class="field-error" data-error-for="description" hidden></p>
+
+          <div class="grouped-fields mt-4">
+            <div class="field-row switch-row">
+              <label for="product-visible" class="field-label flex-grow-1">Show in the app</label>
+              <div class="form-check form-switch m-0">
+                <input class="form-check-input" type="checkbox" role="switch" id="product-visible" checked>
+              </div>
+            </div>
+          </div>
+          <p class="group-footnote">Hidden products stay saved but customers cannot see or buy them.</p>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ User sheet ============ -->
+  <div class="modal fade" id="user-modal" tabindex="-1" aria-labelledby="user-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+      <form class="modal-content sheet" id="user-form" novalidate>
+        <div class="modal-header">
+          <button type="button" class="btn btn-plain" data-bs-dismiss="modal">Cancel</button>
+          <h2 class="modal-title" id="user-modal-title">New User</h2>
+          <button type="submit" class="btn btn-plain fw-semibold" id="user-save">Create</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="user-id">
+
+          <p class="group-label">Account</p>
+          <div class="grouped-fields">
+            <label class="field-row">
+              <span class="field-label">Full name</span>
+              <input type="text" id="user-name" class="field-input" placeholder="Jane Doe" maxlength="60" autocomplete="off" required>
+            </label>
+            <label class="field-row">
+              <span class="field-label">Email</span>
+              <input type="email" id="user-email" class="field-input" placeholder="jane@example.com" maxlength="254" autocomplete="off" required>
+            </label>
+            <label class="field-row">
+              <span class="field-label">Role</span>
+              <select id="user-role" class="field-input field-select">
+                <option value="customer">Customer</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+            <label class="field-row" id="user-status-row" hidden>
+              <span class="field-label">Status</span>
+              <select id="user-status" class="field-input field-select">
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </label>
+          </div>
+          <p class="field-error" data-error-for="name" hidden></p>
+          <p class="field-error" data-error-for="email" hidden></p>
+          <p class="field-error" data-error-for="role" hidden></p>
+
+          <div id="user-password-group">
+            <p class="group-label">Temporary password</p>
+            <div class="grouped-fields">
+              <div class="field-row">
+                <label for="user-password" class="visually-hidden">Temporary password</label>
+                <input type="password" id="user-password" class="field-input" placeholder="At least 8 characters" maxlength="128" autocomplete="new-password">
+                <button type="button" class="icon-button icon-button-sm" id="toggle-password" aria-label="Show password"><i class="bi bi-eye" aria-hidden="true"></i></button>
+                <button type="button" class="icon-button icon-button-sm" id="generate-password" aria-label="Generate a strong password"><i class="bi bi-magic" aria-hidden="true"></i></button>
+              </div>
+            </div>
+            <p class="field-error" data-error-for="password" hidden></p>
+            <p class="group-footnote">Share this with the user privately. They will be asked to choose a new password the first time they sign in.</p>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ Confirmation alert ============ -->
+  <div class="modal fade" id="confirm-modal" tabindex="-1" aria-labelledby="confirm-title" aria-describedby="confirm-message" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+      <div class="modal-content alert-sheet">
+        <div class="alert-body">
+          <h2 id="confirm-title" class="alert-title"></h2>
+          <p id="confirm-message" class="alert-message"></p>
+        </div>
+        <div class="alert-actions">
+          <button type="button" class="alert-button" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="alert-button alert-button-destructive" id="confirm-ok">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Toast ============ -->
+  <div class="toast-container position-fixed toast-stack">
+    <div id="toast" class="toast app-toast" role="status" aria-live="polite" aria-atomic="true" data-bs-delay="2600">
+      <div class="toast-body"><i class="bi bi-check-circle-fill" aria-hidden="true"></i><span id="toast-text"></span></div>
+    </div>
+  </div>
+
+  <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
