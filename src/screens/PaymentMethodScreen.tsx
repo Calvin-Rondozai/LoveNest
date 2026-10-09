@@ -16,6 +16,7 @@ import { useToast } from '../store/toast';
 import { ApiRequestError } from '../lib/api';
 import { toE164 } from '../utils/phone';
 import { mobileMoneyError } from '../utils/mobileMoney';
+import { deliveryFeeFor } from '../utils/deliveryFee';
 import { useTheme } from '../context/ThemeContext';
 import { font, radii, spacing, primary } from '../theme';
 import { RootStackParamList } from '../navigation/types';
@@ -29,11 +30,12 @@ export const PaymentMethodScreen = () => {
   const items = useCart((s) => s.items);
   const clearCart = useCart((s) => s.clear);
   const products = useCatalog((s) => s.products);
-  const deliveryFee = useCatalog((s) => s.deliveryFee);
   const reloadCatalog = useCatalog((s) => s.load);
   const createOrder = useOrders((s) => s.createOrder);
   const showToast = useToast((s) => s.show);
-  const total = cartSubtotal(items, products) + deliveryFee;
+  const subtotal = cartSubtotal(items, products);
+  const deliveryFee = deliveryFeeFor(subtotal);
+  const total = subtotal + deliveryFee;
 
   const [placing, setPlacing] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -132,7 +134,7 @@ export const PaymentMethodScreen = () => {
         </View>
 
         <Text style={[styles.note, { color: colors.textMuted }]}>
-          You will get a prompt on this number. Enter your PIN to approve the payment. Payments are processed securely by Paynow.
+          EcoCash will open a PIN prompt on this phone (or send a USSD dial). Enter your EcoCash PIN there to approve. LoveNest never asks for your PIN inside the app. Payments are processed by Paynow.
         </Text>
       </ScrollView>
       <Button label={payLabel} icon="lock-closed-outline" onPress={pay} disabled={placing || items.length === 0} style={styles.button} />

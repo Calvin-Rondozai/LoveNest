@@ -17,6 +17,7 @@ export const authClient = createAuthClient({
         role: { type: 'string', required: false },
         mustChangePassword: { type: 'boolean', required: false },
         acceptedTermsVersion: { type: 'string', required: false },
+        phone: { type: 'string', required: false },
       },
     }),
   ],

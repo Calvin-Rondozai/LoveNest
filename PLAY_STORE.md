@@ -21,6 +21,7 @@ Answer based on what the app collects once the backend is live:
 |---|---|---|---|---|
 | Name | Yes | Yes (delivery partners) | Account management, App functionality | No |
 | Email address | Yes | No | Account management, Communications | No |
+| Phone number (account) | Yes | No | Account management, App functionality | No |
 | Phone number (recipient) | Yes | Yes (delivery partners) | App functionality | No |
 | Address (delivery) | Yes | Yes (delivery partners) | App functionality | No |
 | Phone number (mobile money payer) | Yes | No | App functionality (payments) | No (required for EcoCash) |

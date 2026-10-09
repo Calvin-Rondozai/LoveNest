@@ -35,6 +35,13 @@ export const ProfileScreen = () => {
           </View>
           <Text style={[styles.guest, { color: colors.text }]}>{user?.name ?? 'Guest'}</Text>
           <Text style={[styles.hint, { color: colors.textMuted }]}>{user?.email}</Text>
+          {user?.phone ? <Text style={[styles.hint, { color: colors.textMuted }]}>{user.phone}</Text> : null}
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Account</Text>
+        <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Row icon="person-outline" label="Edit My Details" onPress={() => navigation.navigate('EditProfile')} />
+          <Row icon="key-outline" label="Change Password" last onPress={() => navigation.navigate('ChangePassword')} />
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Appearance</Text>
@@ -54,9 +61,6 @@ export const ProfileScreen = () => {
 
         <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>Legal & Account</Text>
         <View style={[styles.list, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          {user?.provider === 'password' ? (
-            <Row icon="key-outline" label="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
-          ) : null}
           {LEGAL_LINKS.map((link) => (
             <Row
               key={link.doc}

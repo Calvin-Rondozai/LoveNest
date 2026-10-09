@@ -6,7 +6,7 @@ The backend for the LoveNest mobile app and admin dashboard: accounts, products,
 |---|---|
 | Runtime | Node.js 20 (TypeScript, ES modules) |
 | Web framework | Hono 4 on `@hono/node-server` |
-| Auth | Better Auth 1.7: email and password, 6-digit email codes, admin roles, suspension, Expo, Google |
+| Auth | Better Auth 1.7: email and password, phone, email verification codes, admin roles, suspension, Expo |
 | Database | Turso (libSQL / SQLite) via Drizzle ORM; a local SQLite file in development |
 | Email | Resend |
 | Photos | Cloudinary |
@@ -15,7 +15,7 @@ The backend for the LoveNest mobile app and admin dashboard: accounts, products,
 
 ## What it does
 
-- **Accounts**: sign-up (Terms acceptance required and recorded), sign-in, Google sign-in, 6-digit password reset codes by email, change password, delete account, 30-day sessions.
+- **Accounts**: sign-up with phone (Terms acceptance required and recorded), email verification code, sign-in, 6-digit password reset codes by email, change password, update profile, delete account, 30-day sessions.
 - **Admin users API**: list, create (with a temporary password the user must change), rename, change role, suspend or reactivate (signs them out), delete. You can never remove your own admin access or the last admin.
 - **Catalog**: public categories and visible products for the app; admins create, edit, hide and delete products and upload photos (type checked by file signature, max 5 MB, stored on Cloudinary).
 - **Checkout**: prices, totals and stock come from the database only. Stock is reserved in the same transaction as the order, so the last item can't be sold twice. Every checkout carries an idempotency key, so a retry never creates a second order.
@@ -91,33 +91,25 @@ None of these services asks for a credit card. Do them in this order; each step 
 3. While the integration is in **test mode**, set `PAYNOW_AUTH_EMAIL` to your Paynow login email and use the test numbers above. Ask Paynow to set it live when you are ready, then remove `PAYNOW_AUTH_EMAIL`.
 4. Paynow posts payment results to `https://<your Render URL>/api/payments/paynow/result`; nothing to configure, the server sends this URL with each payment.
 
-### 5. Google sign-in (optional, needs your Android package name)
-
-1. [console.cloud.google.com](https://console.cloud.google.com) > new project "LoveNest".
-2. APIs and Services > OAuth consent screen: External, app name LoveNest, your support email, logo, and the links to `/legal/privacy.html` and `/legal/terms.html`. Scopes: email, profile, openid only.
-3. Credentials > Create OAuth client ID > **Web application**. Copy the client ID and secret into the server's `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, and the client ID into the app's `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`.
-4. Credentials > Create OAuth client ID > **Android**: your package name (`ANDROID_PACKAGE` in the app's `.env`) and the SHA-1 fingerprint from `npx eas credentials` (or `npx expo run:android` debug keystore for testing).
-5. Google sign-in works in a development or release build, not in Expo Go.
-
-### 6. Render (hosting)
+### 5. Render (hosting)
 
 1. Push the repository to GitHub.
 2. [render.com](https://render.com) > sign up with GitHub > New > **Blueprint** > pick the LoveNest repo. Render reads `render.yaml` (Node 20, Frankfurt, free plan, health check, generated `BETTER_AUTH_SECRET`).
 3. Fill in the settings it asks for:
    - `BETTER_AUTH_URL`: the service URL Render shows, e.g. `https://lovenest-api.onrender.com` (you can set it after the first deploy, then redeploy)
-   - everything from steps 1 to 5
+   - everything from steps 1 to 4 (leave Cloudinary blank if using database photos)
    - `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`: your first admin (a strong password)
 4. Deploy. Check `https://<url>/health` shows `{"ok":true,"db":"up","payments":"live"}`.
 5. Sign in at `https://<url>/admin`, then **delete `SEED_ADMIN_PASSWORD`** from Render's Environment settings.
 
-### 7. UptimeRobot (keep the free server awake)
+### 6. UptimeRobot (keep the free server awake)
 
 1. [uptimerobot.com](https://uptimerobot.com) > Add New Monitor > HTTP(s).
 2. URL `https://<your Render URL>/health`, interval 5 minutes.
 
 Render's free plan sleeps after 15 minutes without traffic; the monitor prevents that so Paynow results and customers never hit a cold server. When the shop earns, Render's paid plan removes the need for this.
 
-### 8. Point the app and legal links at production
+### 7. Point the app and legal links at production
 
 - App `.env` (or EAS environment variables): `EXPO_PUBLIC_API_URL=https://<your Render URL>`.
 - `src/legal/content.ts` > `LEGAL_INFO`: fill in the business details and set the three URLs to `https://<your Render URL>/legal/privacy.html`, `/legal/terms.html` and `/legal/delete-account.html`. Run `npm run legal:site` and push.

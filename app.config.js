@@ -4,19 +4,11 @@ module.exports = ({ config }) => ({
   ...config,
   android: {
     ...config.android,
-    // Permanent once published on Google Play. Required for EAS builds and Google sign-in.
+    // Permanent once published on Google Play. Required for EAS builds.
     ...(process.env.ANDROID_PACKAGE ? { package: process.env.ANDROID_PACKAGE } : {}),
   },
   ios: {
     ...config.ios,
     ...(process.env.IOS_BUNDLE_ID ? { bundleIdentifier: process.env.IOS_BUNDLE_ID } : {}),
   },
-  plugins: [
-    ...config.plugins,
-    [
-      '@react-native-google-signin/google-signin',
-      // Required by the plugin; only used for iOS builds. Android needs no option here.
-      { iosUrlScheme: process.env.GOOGLE_IOS_URL_SCHEME || 'com.googleusercontent.apps.not-configured' },
-    ],
-  ],
 });

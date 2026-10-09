@@ -7,13 +7,14 @@ import { font, radii, spacing, danger } from '../theme';
 type Props = {
   label: string;
   value: string;
-  onChangeText: (v: string) => void;
+  onChangeText?: (v: string) => void;
   placeholder?: string;
   keyboardType?: 'default' | 'phone-pad' | 'email-address';
   multiline?: boolean;
   error?: string | null;
   icon?: string;
   secure?: boolean;
+  editable?: boolean;
   autoCapitalize?: TextInputProps['autoCapitalize'];
   autoComplete?: TextInputProps['autoComplete'];
   maxLength?: number;
@@ -30,6 +31,7 @@ export const FormField = ({
   error,
   icon,
   secure,
+  editable = true,
   autoCapitalize,
   autoComplete,
   maxLength,
@@ -48,6 +50,7 @@ export const FormField = ({
           placeholderTextColor={colors.textMuted}
           keyboardType={keyboardType}
           multiline={multiline}
+          editable={editable}
           secureTextEntry={secure && hidden}
           autoCapitalize={autoCapitalize}
           autoComplete={autoComplete}
@@ -56,7 +59,11 @@ export const FormField = ({
           autoCorrect={secure || keyboardType === 'email-address' ? false : undefined}
           style={[
             styles.input,
-            { borderColor: error ? danger : colors.border, color: colors.text, backgroundColor: colors.surface },
+            {
+              borderColor: error ? danger : colors.border,
+              color: colors.text,
+              backgroundColor: editable ? colors.surface : colors.surfaceAlt,
+            },
             multiline && styles.multiline,
             icon && styles.withIcon,
             secure && styles.withToggle,

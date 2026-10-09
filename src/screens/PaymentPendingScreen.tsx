@@ -126,14 +126,14 @@ export const PaymentPendingScreen = () => {
           color={failed ? danger : timedOut ? colors.textMuted : primary}
         />
         <Text style={[styles.title, { color: colors.text }]}>
-          {failed ? 'Payment not completed' : timedOut ? 'Still waiting for payment' : `Approve on your phone`}
+          {failed ? 'Payment not completed' : timedOut ? 'Still waiting for payment' : 'Approve with your EcoCash PIN'}
         </Text>
         <Text style={[styles.message, { color: colors.textMuted }]}>
           {failed
             ? order?.paymentError || 'The payment was cancelled or declined.'
             : timedOut
-              ? 'We have not received confirmation yet. If you approved the payment, check again in a moment.'
-              : `We sent a ${label} prompt to ${phone ? formatLocal(phone) : 'your phone'}. Enter your PIN to pay${order ? ` US$${order.total.toFixed(2)}` : ''}.`}
+              ? 'We have not received confirmation yet. If you already entered your EcoCash PIN, tap Check Again.'
+              : `Check the phone ${phone ? formatLocal(phone) : ''}. EcoCash should show a PIN prompt (or USSD dial) for${order ? ` US$${order.total.toFixed(2)}` : ' this order'}. Enter your PIN there to pay. That prompt comes from EcoCash, not from inside this app.`}
         </Text>
 
         {waiting ? (

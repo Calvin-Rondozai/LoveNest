@@ -8,12 +8,14 @@ export type RootStackParamList = {
   DeleteAccount: undefined;
   Notifications: undefined;
   ChangePassword: { forced?: boolean } | undefined;
+  EditProfile: undefined;
   OrderDetail: { orderNumber: string };
   PaymentPending: { orderId: string; method: 'ecocash'; phone: string };
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: { email?: string } | undefined;
-  VerifyOtp: { email: string };
+  /** purpose: reset = forgot password; verify = confirm email after sign-up or blocked sign-in */
+  VerifyOtp: { email: string; purpose: 'reset' | 'verify' };
   ResetPassword: { email: string; otp: string };
   Tabs: NavigatorScreenParams<TabParamList>;
   ProductDetail: { productId: string };

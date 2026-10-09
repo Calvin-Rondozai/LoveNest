@@ -5,46 +5,49 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthLayout } from '../../components/AuthLayout';
 import { FormField } from '../../components/FormField';
 import { Button } from '../../components/Button';
-import { GoogleButton, OrDivider } from '../../components/GoogleButton';
 import { ConsentCheckbox, InlineLink } from '../../components/ConsentCheckbox';
 import { PasswordChecklist } from '../../components/PasswordChecklist';
 import { useAuth, AuthError } from '../../store/auth';
 import { useLockout, formatWait } from '../../utils/rateLimit';
 import { nameError, emailError, passwordError, confirmError, compactErrors, LIMITS } from '../../utils/validation';
+import { phoneError, isPhoneValid } from '../../utils/phone';
 import { LEGAL_VERSION } from '../../legal/content';
 import { useTheme } from '../../context/ThemeContext';
 import { font, spacing, primary, danger } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
-type Errors = { name?: string; email?: string; password?: string; confirm?: string; terms?: string; form?: string };
+type Errors = { name?: string; email?: string; phone?: string; password?: string; confirm?: string; terms?: string; form?: string };
 
 export const SignUpScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
   const signUp = useAuth((s) => s.signUp);
-  const signInWithGoogle = useAuth((s) => s.signInWithGoogle);
   const { locked, remaining, lock } = useLockout('signup:device');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
-  const [loading, setLoading] = useState<'email' | 'google' | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleError = (e: unknown) => {
     const err = e as AuthError;
     if (err.code === 'rate_limited' && err.retryAfterMs) lock(err.retryAfterMs);
     if (err.code === 'email_taken') setErrors({ email: err.message });
     else setErrors({ form: err.code === 'rate_limited' ? undefined : err.message });
-    setLoading(null);
+    setLoading(false);
   };
 
   const submit = async () => {
     const next = compactErrors({
       name: nameError(name, 'full name'),
       email: emailError(email),
+      phone: !phone.trim()
+        ? 'Enter your phone number'
+        : (phoneError(phone) ?? (isPhoneValid(phone) ? null : 'Enter a complete phone number')),
       password: passwordError(password, { email }),
       confirm: confirmError(password, confirm),
       terms: agreed ? null : 'You must accept the Terms of Use and Privacy Policy',
@@ -52,25 +55,16 @@ export const SignUpScreen = () => {
     setErrors(next);
     if (Object.keys(next).length) return;
 
-    setLoading('email');
+    setLoading(true);
     try {
-      await signUp(name, email, password, LEGAL_VERSION);
+      await signUp(name, email, phone, password, LEGAL_VERSION);
+      navigation.navigate('VerifyOtp', { email: email.trim().toLowerCase(), purpose: 'verify' });
     } catch (e) {
       handleError(e);
     }
   };
 
-  const google = async () => {
-    if (!agreed) return setErrors({ terms: 'You must accept the Terms of Use and Privacy Policy' });
-    setLoading('google');
-    try {
-      await signInWithGoogle(LEGAL_VERSION);
-    } catch (e) {
-      handleError(e);
-    }
-  };
-
-  const busy = loading !== null || locked;
+  const busy = loading || locked;
 
   return (
     <AuthLayout showBack title="Create Account" subtitle="Join LoveNest and make every moment special.">
@@ -96,6 +90,17 @@ export const SignUpScreen = () => {
         autoComplete="email"
         maxLength={LIMITS.email}
         error={errors.email}
+      />
+      <FormField
+        label="Phone Number"
+        icon="call-outline"
+        value={phone}
+        onChangeText={setPhone}
+        placeholder="0771 234 567"
+        keyboardType="phone-pad"
+        autoComplete="tel"
+        maxLength={20}
+        error={errors.phone}
       />
       <FormField
         label="Password"
@@ -136,15 +141,11 @@ export const SignUpScreen = () => {
       ) : null}
 
       <Button
-        label={loading === 'email' ? 'Creating account…' : 'Create Account'}
+        label={loading ? 'Sending code…' : 'Create Account'}
         onPress={submit}
         disabled={busy}
         style={styles.submit}
       />
-
-      <OrDivider />
-
-      <GoogleButton label="Sign up with Google" onPress={google} loading={loading === 'google'} disabled={busy} />
 
       <View style={styles.footer}>
         <Text style={[styles.footerText, { color: colors.textMuted }]}>Already have an account? </Text>

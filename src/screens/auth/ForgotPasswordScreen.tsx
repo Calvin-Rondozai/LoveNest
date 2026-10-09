@@ -32,7 +32,7 @@ export const ForgotPasswordScreen = () => {
     try {
       await requestPasswordReset(email);
       // In development without Resend, the server prints the code in its terminal.
-      navigation.navigate('VerifyOtp', { email: email.trim() });
+      navigation.navigate('VerifyOtp', { email: email.trim().toLowerCase(), purpose: 'reset' });
     } catch (e) {
       const err = e as AuthError;
       if (err.code === 'rate_limited' && err.retryAfterMs) lock(err.retryAfterMs);

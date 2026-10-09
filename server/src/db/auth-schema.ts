@@ -25,6 +25,8 @@ export const user = sqliteTable("user", {
     .notNull(),
   acceptedTermsVersion: text("accepted_terms_version"),
   acceptedTermsAt: integer("accepted_terms_at", { mode: "timestamp_ms" }),
+  /** Zimbabwe mobile number in E.164 (+263…), collected at sign-up. */
+  phone: text("phone"),
 });
 
 export const session = sqliteTable(

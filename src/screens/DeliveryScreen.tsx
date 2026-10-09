@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,9 +9,13 @@ import { KeyboardSafe } from '../components/KeyboardSafe';
 import { PriceRow } from '../components/PriceRow';
 import { Button } from '../components/Button';
 import { DELIVERY_CITY, useCheckout } from '../store/checkout';
+import { useAuth } from '../store/auth';
+import { useCart, cartSubtotal } from '../store/cart';
 import { useCatalog } from '../store/catalog';
 import { useTheme } from '../context/ThemeContext';
 import { phoneError, isPhoneValid, toE164 } from '../utils/phone';
+import { formatLocal } from '../utils/mobileMoney';
+import { deliveryFeeFor } from '../utils/deliveryFee';
 import { nameError, textError, optionalTextError, sanitize, compactErrors, LIMITS } from '../utils/validation';
 import { font, radii, spacing } from '../theme';
 import { RootStackParamList } from '../navigation/types';
@@ -19,8 +23,21 @@ import { RootStackParamList } from '../navigation/types';
 export const DeliveryScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
-  const deliveryFee = useCatalog((s) => s.deliveryFee);
+  const user = useAuth((s) => s.user);
+  const items = useCart((s) => s.items);
+  const products = useCatalog((s) => s.products);
+  const deliveryFee = deliveryFeeFor(cartSubtotal(items, products));
   const { recipientName, recipientPhone, address, apartment, instructions, update } = useCheckout();
+  // Prefill recipient from the signed-in account once; the customer can still edit.
+  useEffect(() => {
+    if (!user) return;
+    const patch: { recipientName?: string; recipientPhone?: string } = {};
+    if (!recipientName.trim() && user.name) patch.recipientName = user.name;
+    if (!recipientPhone.trim() && user.phone) patch.recipientPhone = formatLocal(user.phone);
+    if (Object.keys(patch).length) update(patch);
+    // Only on first open of this checkout draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
   // Show errors only after the first Continue tap, then update them live as the user fixes fields.
   const [submitted, setSubmitted] = useState(false);
 

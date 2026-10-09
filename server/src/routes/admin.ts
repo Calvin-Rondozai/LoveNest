@@ -33,7 +33,8 @@ async function userDtos(ids?: string[]) {
     name: u.name,
     email: u.email,
     role: toRole(u.role),
-    provider: accounts.some((a) => a.userId === u.id && a.providerId === 'google') ? 'google' : 'password',
+    provider: 'password',
+    phone: u.phone ?? '',
     status: u.banned ? 'suspended' : 'active',
     mustChangePassword: Boolean(u.mustChangePassword),
     createdAt: u.createdAt.toISOString(),
@@ -98,7 +99,8 @@ export const adminRoutes = new Hono<AppEnv>()
       body: { email: input.email, password: input.password, name: input.name, role: toAuthRole(input.role) },
     });
     // Temporary password: the user must choose their own at first sign-in.
-    await db.update(user).set({ mustChangePassword: true }).where(eq(user.id, created.user.id));
+    // Admin-created accounts skip email verification so they can sign in immediately.
+    await db.update(user).set({ mustChangePassword: true, emailVerified: true }).where(eq(user.id, created.user.id));
     const [dto] = await userDtos([created.user.id]);
     return c.json({ user: dto }, 201);
   })

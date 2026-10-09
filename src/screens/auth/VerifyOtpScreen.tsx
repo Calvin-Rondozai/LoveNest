@@ -16,10 +16,13 @@ const RESEND_SECONDS = 30;
 
 export const VerifyOtpScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { email } = useRoute<RouteProp<RootStackParamList, 'VerifyOtp'>>().params;
+  const { email, purpose } = useRoute<RouteProp<RootStackParamList, 'VerifyOtp'>>().params;
+  const verifyingEmail = purpose === 'verify';
   const { colors } = useTheme();
   const verifyResetCode = useAuth((s) => s.verifyResetCode);
+  const verifyEmailCode = useAuth((s) => s.verifyEmailCode);
   const requestPasswordReset = useAuth((s) => s.requestPasswordReset);
+  const requestEmailVerification = useAuth((s) => s.requestEmailVerification);
   const showToast = useToast((s) => s.show);
 
   const [code, setCode] = useState('');
@@ -42,9 +45,16 @@ export const VerifyOtpScreen = () => {
   const verify = async (value: string) => {
     setChecking(true);
     try {
-      await verifyResetCode(email, value);
-      setStatus('success');
-      timers.current.push(setTimeout(() => navigation.replace('ResetPassword', { email, otp: value }), 900));
+      if (verifyingEmail) {
+        await verifyEmailCode(email, value);
+        setStatus('success');
+        showToast('Email verified. Welcome to LoveNest!', 3000);
+        // RootNavigator switches to the signed-in stack once user is set.
+      } else {
+        await verifyResetCode(email, value);
+        setStatus('success');
+        timers.current.push(setTimeout(() => navigation.replace('ResetPassword', { email, otp: value }), 900));
+      }
     } catch (e) {
       const err = e as AuthError;
       setStatus('error');
@@ -73,7 +83,8 @@ export const VerifyOtpScreen = () => {
 
   const resend = async () => {
     try {
-      await requestPasswordReset(email);
+      if (verifyingEmail) await requestEmailVerification(email);
+      else await requestPasswordReset(email);
       showToast('A new code is on its way');
       setCode('');
       setStatus('idle');
@@ -91,7 +102,8 @@ export const VerifyOtpScreen = () => {
       title="Enter Verification Code"
       subtitle={
         <>
-          We sent a 6-digit code to{'\n'}
+          {verifyingEmail ? 'We sent a 6-digit code to verify' : 'We sent a 6-digit code to'}
+          {'\n'}
           <Text style={{ color: colors.text, fontFamily: font.sansSemi }}>{email}</Text>
         </>
       }

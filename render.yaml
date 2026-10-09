@@ -37,10 +37,6 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false # e.g. LoveNest <no-reply@yourdomain.com>
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_SECRET
-        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         sync: false
       - key: CLOUDINARY_API_KEY

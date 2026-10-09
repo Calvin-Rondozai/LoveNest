@@ -1,8 +1,8 @@
 import { and, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { order, orderEvent, orderItem, product, user } from '../db/schema.js';
-import { env } from '../env.js';
 import { ApiError, conflict, notFound } from '../lib/errors.js';
+import { deliveryFeeCentsFor, DELIVERY_CITY } from '../lib/delivery-fee.js';
 import { canTransition, STATUS_LABEL, type OrderStatus } from '../lib/order-status.js';
 import { initiateMobilePayment, pollPayment, type MobileMethod, type StatusResult } from '../lib/paynow.js';
 import { localZimNumber } from '../lib/validation.js';
@@ -20,9 +20,6 @@ export type CheckoutInput = {
   paymentMethod: 'ecocash';
   paymentPhone: string; // E.164 EcoCash number
 };
-
-/** Delivery area for now. The app no longer asks for a city. */
-export const DELIVERY_CITY = 'Mutare';
 
 type Customer = { id: string; email: string };
 
@@ -99,7 +96,7 @@ export async function createOrder(customer: Customer, input: CheckoutInput, idem
   if (short) throw new ApiError(409, 'out_of_stock', `Only ${short.product.stock} of ${short.product.name} left.`);
 
   const subtotalCents = lines.reduce((sum, l) => sum + l.product.priceCents * l.quantity, 0);
-  const deliveryFeeCents = env.DELIVERY_FEE_CENTS;
+  const deliveryFeeCents = deliveryFeeCentsFor(subtotalCents);
   const totalCents = subtotalCents + deliveryFeeCents;
 
   let orderId = '';

@@ -10,6 +10,7 @@ import { OrderSuccessScreen } from '../screens/OrderSuccessScreen';
 import { OnboardingScreen } from '../screens/OnboardingScreen';
 import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { ChangePasswordScreen } from '../screens/ChangePasswordScreen';
+import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { OrderDetailScreen } from '../screens/OrderDetailScreen';
 import { PaymentPendingScreen } from '../screens/PaymentPendingScreen';
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -60,6 +61,7 @@ export const RootNavigator = () => {
             <Stack.Screen name="OrderDetail" component={OrderDetailScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="PaymentPending" component={PaymentPendingScreen} options={{ gestureEnabled: false }} />
             <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} options={{ animation: 'slide_from_right' }} />
           </Stack.Group>
         ) : (

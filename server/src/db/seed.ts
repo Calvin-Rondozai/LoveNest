@@ -34,11 +34,22 @@ export async function seed() {
     const email = env.SEED_ADMIN_EMAIL.toLowerCase();
     let [admin] = await db.select().from(user).where(eq(user.email, email));
     if (!admin) {
-      await auth.api.signUpEmail({ body: { email, password: env.SEED_ADMIN_PASSWORD, name: env.SEED_ADMIN_NAME, acceptedTermsVersion: env.LEGAL_VERSION } });
+      await auth.api.signUpEmail({
+        body: {
+          email,
+          password: env.SEED_ADMIN_PASSWORD,
+          name: env.SEED_ADMIN_NAME,
+          acceptedTermsVersion: env.LEGAL_VERSION,
+          phone: '+263771111111',
+        },
+      });
       [admin] = await db.select().from(user).where(eq(user.email, email));
     }
-    if (admin && admin.role !== 'admin') {
-      await db.update(user).set({ role: 'admin', emailVerified: true }).where(eq(user.id, admin.id));
+    if (admin) {
+      await db
+        .update(user)
+        .set({ role: 'admin', emailVerified: true, phone: admin.phone || '+263771111111' })
+        .where(eq(user.id, admin.id));
     }
     return { admin: email };
   }

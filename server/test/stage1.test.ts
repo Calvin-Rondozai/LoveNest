@@ -48,16 +48,35 @@ describe('Stage 1: auth wiring', () => {
   const email = 'tendai@example.com';
   const password = 'Lovenest2026';
 
-  it('signs up a customer with default role and extra fields', async () => {
-    const { status, cookie } = await call('/api/auth/sign-up/email', {
+  it('signs up a customer, emails a code, and signs them in after verification', async () => {
+    testOutbox.length = 0;
+    const { status } = await call('/api/auth/sign-up/email', {
       method: 'POST',
       ip: freshIp(),
-      body: { email, password, name: 'Tendai Moyo', acceptedTermsVersion: '2026-10-08' },
+      body: { email, password, name: 'Tendai Moyo', phone: '0771234567', acceptedTermsVersion: '2026-10-09' },
     });
     expect(status).toBe(200);
 
-    const session = await call('/api/auth/get-session', { cookie });
-    expect(session.json.user).toMatchObject({ email, name: 'Tendai Moyo', role: 'user', mustChangePassword: false, acceptedTermsVersion: '2026-10-08' });
+    const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
+    expect(code).toMatch(/^\d{6}$/);
+
+    const verified = await call('/api/auth/email-otp/verify-email', {
+      method: 'POST',
+      ip: freshIp(),
+      body: { email, otp: code },
+    });
+    expect(verified.status).toBe(200);
+
+    const session = await call('/api/auth/get-session', { cookie: verified.cookie });
+    expect(session.json.user).toMatchObject({
+      email,
+      name: 'Tendai Moyo',
+      phone: '+263771234567',
+      role: 'user',
+      mustChangePassword: false,
+      acceptedTermsVersion: '2026-10-09',
+      emailVerified: true,
+    });
   });
 
   it('rejects a wrong password without saying which part was wrong', async () => {
@@ -67,7 +86,11 @@ describe('Stage 1: auth wiring', () => {
   });
 
   it('rejects passwords shorter than 8 characters', async () => {
-    const { status } = await call('/api/auth/sign-up/email', { method: 'POST', ip: freshIp(), body: { email: 'short@example.com', password: 'abc12', name: 'Short' } });
+    const { status } = await call('/api/auth/sign-up/email', {
+      method: 'POST',
+      ip: freshIp(),
+      body: { email: 'short@example.com', password: 'abc12', name: 'Short', phone: '0771234567', acceptedTermsVersion: '2026-10-09' },
+    });
     expect(status).toBe(400);
   });
 

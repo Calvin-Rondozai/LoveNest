@@ -6,6 +6,8 @@ import { seed } from '../src/db/seed.js';
 import { db } from '../src/db/client.js';
 import { order, product, user } from '../src/db/schema.js';
 import { resetRateLimits } from '../src/lib/rate-limit.js';
+import { testOutbox } from '../src/lib/email.js';
+import { deliveryFeeCentsFor } from '../src/lib/delivery-fee.js';
 
 // Test responses are read loosely; the assertions check the shapes.
 type TestResponse = Omit<Response, 'json'> & { json(): Promise<any> };
@@ -17,13 +19,22 @@ let adminCookie = '';
 let products: { id: string; name: string; priceCents: number; stock: number }[] = [];
 
 async function signUp(email: string, name = 'Test Customer') {
+  testOutbox.length = 0;
   const res = await call('/api/auth/sign-up/email', {
     method: 'POST',
     ip: freshIp(),
-    body: { email, password: 'Customer2026', name, acceptedTermsVersion: '2026-10-08' },
+    body: { email, password: 'Customer2026', name, phone: '0771234567', acceptedTermsVersion: '2026-10-09' },
   });
   expect(res.status).toBe(200);
-  return res.cookie!;
+  const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
+  expect(code).toMatch(/^\d{6}$/);
+  const verified = await call('/api/auth/email-otp/verify-email', {
+    method: 'POST',
+    ip: freshIp(),
+    body: { email, otp: code },
+  });
+  expect(verified.status).toBe(200);
+  return verified.cookie!;
 }
 
 const idem = () => `test-${crypto.randomUUID()}`;
@@ -89,7 +100,7 @@ describe('checkout', () => {
     expect(res.status).toBe(201);
     const { order: o } = await res.json();
     expect(o.subtotalCents).toBe(p.priceCents * 2);
-    expect(o.totalCents).toBe(p.priceCents * 2 + 500);
+    expect(o.totalCents).toBe(p.priceCents * 2 + deliveryFeeCentsFor(p.priceCents * 2));
     expect(o.recipientPhone).toBe('+263771234567');
     expect(o.city).toBe('Mutare');
     expect(o.status).toBe('placed');
@@ -327,7 +338,11 @@ describe('security', () => {
   });
 
   it('requires accepting the terms to sign up', async () => {
-    const res = await call('/api/auth/sign-up/email', { method: 'POST', ip: freshIp(), body: { email: 'noterms@example.com', password: 'Customer2026', name: 'No Terms' } });
+    const res = await call('/api/auth/sign-up/email', {
+      method: 'POST',
+      ip: freshIp(),
+      body: { email: 'noterms@example.com', password: 'Customer2026', name: 'No Terms', phone: '0771234567' },
+    });
     expect(res.status).toBe(400);
   });
 

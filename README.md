@@ -17,14 +17,14 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 **Shopping**
 - Home dashboard with a search bar, a hero banner and category shortcuts. Search and **Shop Now** open the market.
 - Market (Categories tab) with an **All** view by default, category filters, and search across product names, descriptions and categories.
-- Product details, cart, and a 4-step checkout: **Cart → Delivery → Confirm → Payment**. Delivery is Mutare only. Payment is EcoCash. The order is reviewed and confirmed *before* payment.
+- Product details, cart, and a 4-step checkout: **Cart → Delivery → Confirm → Payment**. Delivery is Mutare only; recipient name and phone are pre-filled from the account and can be edited on Confirm. Payment is EcoCash (PIN prompt on the customer's phone). Delivery fee is US$5 under US$50 subtotal, US$10 at US$50+.
 - **Order tracking**: My Orders shows each order's status and a progress bar; Order Details shows a step-by-step timeline (Order placed, Confirmed, Being prepared, Out for delivery, Delivered, or Cancelled), notes from the shop, items, delivery details and payment status. Status changes arrive as in-app notifications. Pull down to refresh.
 
 **Accounts**
-- Email/password sign-up and login, plus a *Continue with Google* button (placeholder until a dev build is configured).
+- Email/password sign-up and login. Sign-up collects name, email, phone and password, then emails a **6-digit verification code** before the account can sign in.
 - Forgot password with a **6-digit code**. The boxes turn green when the code is right and shake red when it's wrong; codes expire after 10 minutes.
 - Signing up requires accepting the Terms and Privacy Policy and confirming age 18+. The accepted version is recorded.
-- **Change Password** in Profile for email accounts. You confirm your current password, and wrong guesses lead to a lockout.
+- Profile: **Edit My Details** (name and phone) and **Change Password**.
 - In-app **Delete Account**, as Google Play requires.
 
 **Security**
@@ -84,8 +84,6 @@ Then point the app at it: copy `.env.example` to `.env` in the project root and 
 
 ### Development build (APK)
 
-Google sign-in and other native features need a development build instead of Expo Go:
-
 ```bash
 npx expo run:android            # builds the debug APK, installs it on the running emulator or phone
 npx expo start                  # afterwards, just start the dev server and open the LoveNest app
@@ -95,9 +93,9 @@ The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk` (the `
 
 ### Trying it in development
 
-- **Password reset**: Forgot password, enter your email, and the 6-digit code prints in the server terminal (until Resend is configured).
-- **Mobile money**: without Paynow keys the server simulates Paynow. Pay with `0771111111` to succeed, `0773333333` to cancel or `0774444444` for insufficient balance.
-- **Google sign-in** needs a development build (`npx expo run:android`), not Expo Go.
+- **Sign-up**: create an account; the 6-digit email code prints in the server terminal (until Resend is configured). Enter it to verify, then you are signed in.
+- **Password reset**: Forgot password, enter your email, and the 6-digit code prints in the server terminal.
+- **Mobile money**: without Paynow keys the server simulates Paynow (no real EcoCash PIN popup). Pay with `0771111111` to succeed, `0773333333` to cancel or `0774444444` for insufficient balance. With live Paynow keys, EcoCash shows the PIN prompt on the customer's phone.
 - **Onboarding again**: clear the app's storage, or reinstall.
 
 ## Scripts
@@ -158,16 +156,15 @@ Typography: **Poppins** for UI and **Pacifico** for script accents. The app icon
 | Database (users, products, orders) | **Turso** (5 GB free), accessed through Drizzle so it can move to Postgres later |
 | Product photos | **Cloudinary** (25 free credits a month, automatic resizing for mobile) |
 | Server (login, payments, admin API) | **Render** free web service, kept awake by an **UptimeRobot** ping |
-| Login | **Better Auth** on that server: email and password, Google sign-in (native, via ID token), 6-digit reset codes |
+| Login | **Better Auth** on that server: email and password, phone on the account, email verification codes, 6-digit reset codes |
 | Payments | **Paynow** (EcoCash). The integration key stays on the server; orders are only marked paid after the server confirms with Paynow |
 | Emails | **Resend** (3,000 a month, 100 a day) |
-| Google sign-in setup | Google Cloud Console OAuth client IDs (Web + Android); free, no billing |
 
 Not chosen: Supabase (free projects pause after a week of inactivity), Vercel (free plan bans commercial use), Neon Auth (no official Expo support), and Fly.io, Railway and Koyeb (need a card). When the shop is earning, Render's paid plan (about $7 a month) removes the sleep issue.
 
 ### Status
 
-All six stages are built: accounts, products, orders and payments run on the API in [`server/`](server/README.md), and both the app and the admin dashboard use it. The server README has the step-by-step **Going live** guide (Turso, Resend, Cloudinary, Paynow, Google, Render, UptimeRobot). Deployment is described in `render.yaml`.
+All six stages are built: accounts, products, orders and payments run on the API in [`server/`](server/README.md), and both the app and the admin dashboard use it. The server README has the step-by-step **Going live** guide (Turso, Resend, Cloudinary, Paynow, Render, UptimeRobot). Deployment is described in `render.yaml`.
 
 The client-side checks are for user experience only. Before launch, the backend **must**:
 - own the order lifecycle: accept status changes from admins only, allow just "next step" or "cancel", and record each change with a timestamp and optional note;
@@ -176,8 +173,6 @@ The client-side checks are for user experience only. Before launch, the backend 
 - hash passwords, expire reset codes after 10 minutes, and invalidate them after 5 wrong attempts;
 - use idempotency keys when creating orders and payments;
 - actually delete account data within the 30 days promised in the Privacy Policy.
-
-Google Sign-In needs a development build and a Google Cloud OAuth client: see [Expo's guide](https://docs.expo.dev/guides/google-authentication/).
 
 See [`PLAY_STORE.md`](PLAY_STORE.md) for the full launch checklist.
 
@@ -197,6 +192,12 @@ The source code is licensed under the [Apache License 2.0](LICENSE).
 The **LoveNest name, logo and brand images are not covered** by that licence and remain all rights reserved. See [`NOTICE`](NOTICE). Forks must use their own branding.
 
 ## Changelog
+
+### 2026-10-09 (accounts, delivery, fees)
+- Removed Google sign-in. Sign-up now collects phone number and requires a 6-digit email verification code before login.
+- Delivery pre-fills account name and phone; Confirm lets you edit delivery details. Profile has Edit My Details.
+- Delivery fee is tiered: US$5 under US$50 subtotal, US$10 at US$50+. EcoCash PIN is approved on the phone (Paynow), with clearer waiting copy in the app.
+- Privacy Policy and Terms updated for phone, email verification, Mutare delivery, fees and EcoCash PIN handling.
 
 ### 2026-10-08 (Mutare + EcoCash only)
 - Delivery city is fixed to Mutare (city/town field removed from checkout).

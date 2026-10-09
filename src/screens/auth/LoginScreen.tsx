@@ -5,12 +5,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthLayout } from '../../components/AuthLayout';
 import { FormField } from '../../components/FormField';
 import { Button } from '../../components/Button';
-import { GoogleButton, OrDivider } from '../../components/GoogleButton';
 import { InlineLink } from '../../components/ConsentCheckbox';
 import { useAuth, AuthError } from '../../store/auth';
 import { useLockout, formatWait } from '../../utils/rateLimit';
 import { emailError, LIMITS, compactErrors } from '../../utils/validation';
-import { LEGAL_VERSION } from '../../legal/content';
 import { useTheme } from '../../context/ThemeContext';
 import { font, spacing, primary, danger } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
@@ -21,19 +19,23 @@ export const LoginScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
   const signIn = useAuth((s) => s.signIn);
-  const signInWithGoogle = useAuth((s) => s.signInWithGoogle);
   const { locked, remaining, lock } = useLockout('login:device');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Errors>({});
-  const [loading, setLoading] = useState<'email' | 'google' | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleError = (e: unknown) => {
     const err = e as AuthError;
     if (err.code === 'rate_limited' && err.retryAfterMs) lock(err.retryAfterMs);
+    if (err.code === 'email_not_verified') {
+      setLoading(false);
+      navigation.navigate('VerifyOtp', { email: email.trim().toLowerCase(), purpose: 'verify' });
+      return;
+    }
     setErrors({ form: err.code === 'rate_limited' ? undefined : err.message });
-    setLoading(null);
+    setLoading(false);
   };
 
   const submit = async () => {
@@ -41,7 +43,7 @@ export const LoginScreen = () => {
     setErrors(next);
     if (Object.keys(next).length) return;
 
-    setLoading('email');
+    setLoading(true);
     try {
       await signIn(email, password);
     } catch (e) {
@@ -49,16 +51,7 @@ export const LoginScreen = () => {
     }
   };
 
-  const google = async () => {
-    setLoading('google');
-    try {
-      await signInWithGoogle(LEGAL_VERSION);
-    } catch (e) {
-      handleError(e);
-    }
-  };
-
-  const busy = loading !== null || locked;
+  const busy = loading || locked;
 
   return (
     <AuthLayout title="Welcome Back" subtitle="Sign in to continue sending love.">
@@ -97,11 +90,7 @@ export const LoginScreen = () => {
         <Text style={styles.formError}>{errors.form}</Text>
       ) : null}
 
-      <Button label={loading === 'email' ? 'Signing in…' : 'Log In'} onPress={submit} disabled={busy} />
-
-      <OrDivider />
-
-      <GoogleButton label="Continue with Google" onPress={google} loading={loading === 'google'} disabled={busy} />
+      <Button label={loading ? 'Signing in…' : 'Log In'} onPress={submit} disabled={busy} />
 
       <View style={styles.footer}>
         <Text style={[styles.footerText, { color: colors.textMuted }]}>Don't have an account? </Text>

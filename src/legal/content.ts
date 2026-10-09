@@ -8,21 +8,21 @@
 // `[[…]]` placeholder in LEGAL_INFO. Bump LEGAL_VERSION whenever the text
 // changes materially so users can be asked to accept the new version.
 
-export const LEGAL_VERSION = '2026-10-08.2';
-export const EFFECTIVE_DATE = '8 October 2026';
+export const LEGAL_VERSION = '2026-10-09';
+export const EFFECTIVE_DATE = '9 October 2026';
 
 export const LEGAL_INFO = {
   appName: 'LoveNest Gifts',
-  businessName: '[[Registered business name]]',
-  address: '[[Physical business address, Harare, Zimbabwe]]',
-  email: '[[support email address]]',
+  businessName: '[[LoveNest]]',
+  address: '[[79 Livingstone, Mutare, Zimbabwe]]',
+  email: '[[moses.lovenest@gmail.com]]',
   whatsapp: '+263 78 582 3025',
   country: 'Zimbabwe',
   /** Public URLs where the web versions are hosted (needed for the Play Console). */
   // Served by the API at /legal/ once deployed, e.g. https://lovenest-api.onrender.com/legal/privacy.html
-  privacyUrl: '[[https://your-api-url/legal/privacy.html]]',
-  termsUrl: '[[https://your-api-url/legal/terms.html]]',
-  deleteAccountUrl: '[[https://your-api-url/legal/delete-account.html]]',
+  privacyUrl: '[[https://lovenest-api-1tb2.onrender.com/legal/privacy.html]]',
+  termsUrl: '[[https://lovenest-api-1tb2.onrender.com/legal/terms.html]]',
+  deleteAccountUrl: '[[https://lovenest-api-1tb2.onrender.com/legal/delete-account.html]]',
 };
 
 export type LegalSection = { heading: string; paragraphs?: string[]; bullets?: string[] };
@@ -50,10 +50,10 @@ const privacy: LegalDocument = {
       heading: '2. Information we collect',
       paragraphs: ['We only collect what we need to run the service:'],
       bullets: [
-        'Account information: your name, email address and password. Passwords are stored by our servers in hashed form and are never visible to our staff.',
-        'Google Sign-In: if you choose "Continue with Google", we receive your name, email address and Google account identifier from Google. We do not receive your Google password.',
-        'Order and delivery information: the items you order, recipient name, recipient phone number, delivery address, delivery instructions and any gift message you write.',
-        'Payment information: EcoCash payments and transaction references. Mobile money payments are processed by the payment provider; we never see or store your mobile money PIN.',
+        'Account information: your name, email address, phone number and password. Passwords are stored by our servers in hashed form and are never visible to our staff.',
+        'Email verification: when you create an account we send a one-time code to your email so we can confirm you control that address before you sign in.',
+        'Order and delivery information: the items you order, recipient name, recipient phone number, delivery address (currently Mutare), delivery instructions and any gift message you write. Checkout may pre-fill your account name and phone as the recipient; you can change those details before paying.',
+        'Payment information: EcoCash payments and transaction references. Mobile money payments are processed by the payment provider; we never see or store your mobile money PIN. The EcoCash PIN prompt appears on your phone from EcoCash, not inside the LoveNest app.',
         'Support communications: messages you send us, including through WhatsApp. Tapping a WhatsApp button opens WhatsApp with a suggested message; nothing is sent until you choose to send it, and your use of WhatsApp is governed by WhatsApp’s own privacy policy.',
         'Technical and security information: when you use our services our servers may log your IP address, device type, operating system, app version, timestamps and failed sign-in attempts, to keep the service secure and prevent fraud.',
         'Information stored on your device: settings such as light/dark mode, your signed-in session, a copy of your orders and their delivery progress, in-app notifications (such as order updates) and limits on repeated sign-in attempts are stored locally on your device. Signing out keeps these settings; deleting the app removes them.',
@@ -62,9 +62,9 @@ const privacy: LegalDocument = {
     {
       heading: '3. How we use your information',
       bullets: [
-        'To create and manage your account and sign you in.',
+        'To create and manage your account and sign you in, including verifying your email with a one-time code.',
         'To process, deliver and support your orders, including contacting you or the recipient about a delivery.',
-        'To send service messages such as order confirmations, delivery progress updates (for example "Out for delivery"), short notes from our team about your order, and password reset codes.',
+        'To send service messages such as email verification codes, order confirmations, delivery progress updates (for example "Out for delivery"), short notes from our team about your order, and password reset codes.',
         'To protect accounts and the service, including limiting repeated sign-in attempts and detecting fraud or abuse.',
         'To meet our legal, tax and accounting obligations.',
         'To improve the app, using aggregated information that does not identify you.',
@@ -93,8 +93,7 @@ const privacy: LegalDocument = {
       bullets: [
         'Delivery partners and couriers, who receive the recipient details needed to deliver your order.',
         'Paynow (Zimbabwe), our payment gateway, and your mobile money operator (EcoCash), which receive your order reference, amount, payment phone number and email to process the payment.',
-        'Google, if you use Google Sign-In.',
-        'Service providers that run LoveNest on our behalf and may only use the data for that purpose: Render (application hosting), Turso (database), Resend (sending emails such as password reset codes) and Cloudinary (product photos; no customer data).',
+        'Service providers that run LoveNest on our behalf and may only use the data for that purpose: Render (application hosting), Turso (database), Resend (sending emails such as verification and password reset codes) and Cloudinary (product photos; no customer data).',
         'Authorities, courts or regulators where the law requires it, or to protect the rights, property or safety of LoveNest, our customers or others.',
         'A buyer or successor if our business is sold or restructured, subject to this policy.',
       ],
@@ -186,14 +185,15 @@ const terms: LegalDocument = {
       bullets: [
         'Prices are shown in US dollars (US$) and include the delivery fee shown at checkout.',
         'Product photos are illustrative. Flowers, cakes and similar items may vary slightly in colour, size or arrangement; we may substitute an item of similar style and equal or greater value if something is unavailable.',
-        'Before paying, you review your items, delivery details and total and confirm they are correct. Completing the payment step is an offer to buy, and a contract is formed when we confirm your order. Delivery is currently available in Mutare only.',
+        'Before paying, you review your items, delivery details and total and confirm they are correct. You may edit delivery details on the confirm step. Completing the payment step is an offer to buy, and a contract is formed when we confirm your order. Delivery is currently available in Mutare only.',
         'We may refuse or cancel an order, for example if an item is unavailable, a price was shown in error, payment fails, or we suspect fraud. If we cancel after you have paid, we will refund you in full.',
       ],
     },
     {
       heading: '5. Payment',
       paragraphs: [
-        'You pay by EcoCash at checkout. Mobile money payments are also subject to your provider\'s terms. Your order is confirmed once payment is received.',
+        'You pay by EcoCash at checkout. You approve the payment with your EcoCash PIN on your phone when EcoCash prompts you; LoveNest never asks for that PIN inside the app. Mobile money payments are also subject to your provider\'s terms. Your order is confirmed once payment is received.',
+        'Delivery fees depend on your order subtotal: US$5 when the subtotal is under US$50, and US$10 when the subtotal is US$50 or more. The fee is shown before you pay.',
       ],
     },
     {
