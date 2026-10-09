@@ -63,9 +63,10 @@ type BetterAuthError = { status?: number; code?: string; message?: string } | nu
 function fromServer(error: BetterAuthError, fallback: AuthErrorCode = 'unknown'): AuthError {
   const code = (error?.code ?? '').toUpperCase();
   const status = error?.status ?? 0;
+  const message = typeof error?.message === 'string' && error.message.trim() ? error.message.trim() : undefined;
   if (status === 0) return new AuthError('network');
   if (status === 429) return new AuthError('rate_limited', 60_000);
-  if (code.includes('BANNED')) return new AuthError('suspended', undefined, error?.message);
+  if (code.includes('BANNED')) return new AuthError('suspended', undefined, message);
   if (code.includes('USER_ALREADY_EXISTS')) return new AuthError('email_taken');
   if (code.includes('EMAIL_NOT_VERIFIED') || code.includes('NOT_VERIFIED')) return new AuthError('email_not_verified');
   if (code === 'INVALID_OTP') return new AuthError('code_invalid');
@@ -73,8 +74,12 @@ function fromServer(error: BetterAuthError, fallback: AuthErrorCode = 'unknown')
   if (code === 'TOO_MANY_ATTEMPTS') return new AuthError('code_locked');
   if (code.includes('SESSION') && (code.includes('FRESH') || code.includes('EXPIRED'))) return new AuthError('session_expired');
   if (code === 'INVALID_EMAIL_OR_PASSWORD' || code === 'INVALID_PASSWORD' || status === 401) return new AuthError('invalid_credentials');
-  if (status === 403 && error?.message) return new AuthError('suspended', undefined, error.message);
-  return new AuthError(fallback, undefined, error?.message || undefined);
+  if (status === 403 && message) return new AuthError('suspended', undefined, message);
+  // Prefer the server's message (e.g. invalid phone) over the generic fallback.
+  if (message && (status === 400 || status >= 500 || fallback === 'unknown')) {
+    return new AuthError(fallback, undefined, message);
+  }
+  return new AuthError(fallback, undefined, message);
 }
 
 const toAuthError = (e: unknown): AuthError => {
@@ -254,8 +259,8 @@ export const useAuth = create<AuthState>()(
         const email = normalize(rawEmail);
         try {
           await assertNotLimited(`reset:${email}`);
-          // Succeeds whether or not the email has an account, so it never reveals who is registered.
-          const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: 'forget-password' });
+          // Dedicated reset endpoint (no form CSRF). Always returns success so accounts are not revealed.
+          const { error } = await authClient.emailOtp.requestPasswordReset({ email });
           if (error) throw fromServer(error);
           await recordAttempt(`reset:${email}`, POLICIES.resetRequest);
         } catch (e) {
@@ -313,10 +318,19 @@ export const useAuth = create<AuthState>()(
         if (!user) return;
         try {
           const e164 = toE164(phone) ?? phone.trim();
-          const { data, error } = await authClient.updateUser({ name: sanitize(name), phone: e164 });
+          if (!e164 || !/^\+2637[1-8]\d{7}$/.test(e164)) {
+            throw new AuthError('unknown', undefined, 'Enter a valid Zimbabwe phone number, for example 0771 234 567.');
+          }
+          const cleanName = sanitize(name);
+          const { error } = await authClient.updateUser({ name: cleanName, phone: e164 });
           if (error) throw fromServer(error);
-          const next = (data as { user?: ServerUser } | null)?.user;
-          set({ user: next ? toUser(next) : { ...user, name: sanitize(name), phone: e164 } });
+          // updateUser returns { status: true } without a user payload; refresh session for the saved fields.
+          const session = await authClient.getSession();
+          if (session.data?.user) {
+            set({ user: toUser(session.data.user as ServerUser) });
+            return;
+          }
+          set({ user: { ...user, name: cleanName, phone: e164 } });
         } catch (e) {
           throw toAuthError(e);
         }

@@ -47,7 +47,7 @@ export const ForgotPasswordScreen = () => {
       showBack
       headerIcon="key-outline"
       title="Forgot Password?"
-      subtitle="Enter the email linked to your account and we'll send you a 6-digit code to reset your password."
+      subtitle="Enter the email linked to your account and we'll send a 6-digit code. Check your inbox and spam folder."
     >
       <FormField
         label="Email"

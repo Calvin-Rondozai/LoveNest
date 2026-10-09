@@ -193,6 +193,11 @@ The **LoveNest name, logo and brand images are not covered** by that licence and
 
 ## Changelog
 
+### 2026-10-09 (delivery polish + auth fixes)
+- Delivery Details: removed apartment field; Mutare-only note is italic red text at the bottom of the page (not a card). Recipient phone still pre-fills from the account.
+- Profile save refreshes the session after update. Forgot-password uses `/email-otp/request-password-reset` so OTP emails send reliably on Expo.
+- No legal change (apartment was optional; no new data collected).
+
 ### 2026-10-09 (accounts, delivery, fees)
 - Removed Google sign-in. Sign-up now collects phone number and requires a 6-digit email verification code before login.
 - Delivery pre-fills account name and phone; Confirm lets you edit delivery details. Profile has Edit My Details.

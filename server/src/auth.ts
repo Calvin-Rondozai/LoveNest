@@ -68,6 +68,7 @@ export const auth = betterAuth({
       '/sign-in/email': { window: 15 * 60, max: 5 },
       '/sign-up/email': { window: 60 * 60, max: 5 },
       '/email-otp/send-verification-otp': { window: 15 * 60, max: 3 },
+      '/email-otp/request-password-reset': { window: 15 * 60, max: 3 },
       '/forget-password/email-otp': { window: 15 * 60, max: 3 },
       '/email-otp/check-verification-otp': { window: 15 * 60, max: 10 },
       '/email-otp/verify-email': { window: 15 * 60, max: 10 },

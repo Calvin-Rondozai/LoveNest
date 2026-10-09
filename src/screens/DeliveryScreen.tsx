@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, StyleSheet, View } from 'react-native';
+import { ScrollView, Text, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,7 +17,7 @@ import { phoneError, isPhoneValid, toE164 } from '../utils/phone';
 import { formatLocal } from '../utils/mobileMoney';
 import { deliveryFeeFor } from '../utils/deliveryFee';
 import { nameError, textError, optionalTextError, sanitize, compactErrors, LIMITS } from '../utils/validation';
-import { font, radii, spacing } from '../theme';
+import { font, spacing, primary } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 
 export const DeliveryScreen = () => {
@@ -27,7 +27,7 @@ export const DeliveryScreen = () => {
   const items = useCart((s) => s.items);
   const products = useCatalog((s) => s.products);
   const deliveryFee = deliveryFeeFor(cartSubtotal(items, products));
-  const { recipientName, recipientPhone, address, apartment, instructions, update } = useCheckout();
+  const { recipientName, recipientPhone, address, instructions, update } = useCheckout();
   // Prefill recipient from the signed-in account once; the customer can still edit.
   useEffect(() => {
     if (!user) return;
@@ -37,7 +37,7 @@ export const DeliveryScreen = () => {
     if (Object.keys(patch).length) update(patch);
     // Only on first open of this checkout draft.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id]);
+  }, [user?.id, user?.phone, user?.name]);
   // Show errors only after the first Continue tap, then update them live as the user fixes fields.
   const [submitted, setSubmitted] = useState(false);
 
@@ -47,7 +47,6 @@ export const DeliveryScreen = () => {
       ? 'Enter a phone number'
       : (phoneError(recipientPhone) ?? (isPhoneValid(recipientPhone) ? null : 'Enter a complete phone number')),
     address: textError(address, { label: 'an address', min: 5, max: LIMITS.address }),
-    apartment: optionalTextError(apartment, LIMITS.apartment),
     instructions: optionalTextError(instructions, LIMITS.instructions),
   });
   // Typing-time hints (e.g. too many phone digits) show before submit too.
@@ -60,7 +59,7 @@ export const DeliveryScreen = () => {
       recipientName: sanitize(recipientName),
       recipientPhone: toE164(recipientPhone),
       address: sanitize(address),
-      apartment: sanitize(apartment),
+      apartment: '',
       city: DELIVERY_CITY,
       instructions: sanitize(instructions),
     });
@@ -102,19 +101,6 @@ export const DeliveryScreen = () => {
           error={shown.address}
         />
         <FormField
-          label="Apartment / Suite (Optional)"
-          value={apartment}
-          onChangeText={(v) => update({ apartment: v })}
-          placeholder="House / suite no."
-          maxLength={LIMITS.apartment}
-          error={shown.apartment}
-        />
-        <View style={[styles.cityNote, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.cityLabel, { color: colors.textMuted }]}>City</Text>
-          <Text style={[styles.cityValue, { color: colors.text }]}>{DELIVERY_CITY}</Text>
-          <Text style={[styles.cityHint, { color: colors.textMuted }]}>Delivery is currently available in Mutare only.</Text>
-        </View>
-        <FormField
           label={`Delivery Instructions (Optional) · ${instructions.length}/${LIMITS.instructions}`}
           value={instructions}
           onChangeText={(v) => update({ instructions: v })}
@@ -125,6 +111,8 @@ export const DeliveryScreen = () => {
         />
 
         <PriceRow label="Delivery Fee" value={`US$${deliveryFee.toFixed(2)}`} />
+
+        <Text style={styles.mutareNote}>Delivery is currently available in Mutare only.</Text>
       </ScrollView>
       <Button label="Review Order" onPress={onContinue} style={styles.button} />
       </KeyboardSafe>
@@ -134,16 +122,17 @@ export const DeliveryScreen = () => {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  body: { paddingHorizontal: spacing.md, paddingBottom: spacing.lg },
+  body: { flexGrow: 1, paddingHorizontal: spacing.md, paddingBottom: spacing.lg },
   section: { fontSize: font.size.sm, fontFamily: font.sansBold, marginBottom: spacing.md, marginTop: spacing.xs },
-  cityNote: {
-    borderWidth: 1,
-    borderRadius: radii.md,
-    padding: spacing.md,
-    marginBottom: spacing.md,
+  mutareNote: {
+    marginTop: 'auto',
+    paddingTop: spacing.xl,
+    fontSize: font.size.sm,
+    fontFamily: font.sans,
+    fontStyle: 'italic',
+    color: primary,
+    textAlign: 'center',
+    lineHeight: 20,
   },
-  cityLabel: { fontSize: font.size.xs, fontFamily: font.sansMedium, marginBottom: 4 },
-  cityValue: { fontSize: font.size.sm, fontFamily: font.sansBold },
-  cityHint: { fontSize: font.size.xs, fontFamily: font.sans, marginTop: 4, lineHeight: 16 },
   button: { marginHorizontal: spacing.md, marginBottom: spacing.md },
 });

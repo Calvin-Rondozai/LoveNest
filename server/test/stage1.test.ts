@@ -106,7 +106,7 @@ describe('Stage 1: auth wiring', () => {
 
   it('resets a password with a 6-digit emailed code', async () => {
     testOutbox.length = 0;
-    const sent = await call('/api/auth/email-otp/send-verification-otp', { method: 'POST', ip: freshIp(), body: { email, type: 'forget-password' } });
+    const sent = await call('/api/auth/email-otp/request-password-reset', { method: 'POST', ip: freshIp(), body: { email } });
     expect(sent.status).toBe(200);
     const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
     expect(code).toMatch(/^\d{6}$/);
@@ -122,7 +122,38 @@ describe('Stage 1: auth wiring', () => {
   });
 
   it('does not reveal whether an email has an account when requesting a code', async () => {
-    const res = await call('/api/auth/email-otp/send-verification-otp', { method: 'POST', ip: freshIp(), body: { email: 'nobody@example.com', type: 'forget-password' } });
+    const res = await call('/api/auth/email-otp/request-password-reset', { method: 'POST', ip: freshIp(), body: { email: 'nobody@example.com' } });
     expect(res.status).toBe(200);
+  });
+
+  it('lets a signed-in user update name and phone', async () => {
+    const email = `profile-${Date.now()}@example.com`;
+    testOutbox.length = 0;
+    await call('/api/auth/sign-up/email', {
+      method: 'POST',
+      ip: freshIp(),
+      body: { email, password: 'Customer2026', name: 'Before Name', phone: '0771234567', acceptedTermsVersion: '2026-10-09' },
+    });
+    const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
+    const verified = await call('/api/auth/email-otp/verify-email', {
+      method: 'POST',
+      ip: freshIp(),
+      body: { email, otp: code },
+    });
+    expect(verified.status).toBe(200);
+
+    const updated = await call('/api/auth/update-user', {
+      method: 'POST',
+      ip: freshIp(),
+      cookie: verified.cookie,
+      body: { name: 'After Name', phone: '0779988776' },
+    });
+    expect(updated.status).toBe(200);
+
+    const session = await call('/api/auth/get-session', { cookie: verified.cookie ?? updated.cookie });
+    expect(session.json.user).toMatchObject({
+      name: 'After Name',
+      phone: '+263779988776',
+    });
   });
 });

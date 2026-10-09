@@ -25,7 +25,7 @@ export const ConfirmOrderScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
   const checkout = useCheckout();
-  const { recipientName, address, apartment, city, recipientPhone, instructions, update } = checkout;
+  const { recipientName, address, city, recipientPhone, instructions, update } = checkout;
   const items = useCart((s) => s.items);
   const products = useCatalog((s) => s.products);
   const subtotal = cartSubtotal(items, products);
@@ -43,7 +43,6 @@ export const ConfirmOrderScreen = () => {
         ? 'Enter a phone number'
         : (phoneError(recipientPhone) ?? (isPhoneValid(recipientPhone) ? null : 'Enter a complete phone number')),
       address: textError(address, { label: 'an address', min: 5, max: LIMITS.address }),
-      apartment: optionalTextError(apartment, LIMITS.apartment),
       instructions: optionalTextError(instructions, LIMITS.instructions),
     });
     setFieldErrors(next);
@@ -52,7 +51,7 @@ export const ConfirmOrderScreen = () => {
       recipientName: sanitize(recipientName),
       recipientPhone: toE164(recipientPhone) ?? recipientPhone,
       address: sanitize(address),
-      apartment: sanitize(apartment),
+      apartment: '',
       city: DELIVERY_CITY,
       instructions: sanitize(instructions),
     });
@@ -130,13 +129,6 @@ export const ConfirmOrderScreen = () => {
                 maxLength={LIMITS.address}
                 error={fieldErrors.address}
               />
-              <FormField
-                label="Apartment / Suite (Optional)"
-                value={apartment}
-                onChangeText={(v) => update({ apartment: v })}
-                maxLength={LIMITS.apartment}
-                error={fieldErrors.apartment}
-              />
               <Text style={[styles.muted, { color: colors.textMuted }]}>City: {city || DELIVERY_CITY}</Text>
               <FormField
                 label="Delivery Instructions (Optional)"
@@ -150,10 +142,7 @@ export const ConfirmOrderScreen = () => {
           ) : (
             <>
               <Text style={[styles.bold, { color: colors.text }]}>{recipientName}</Text>
-              <Text style={[styles.muted, { color: colors.textMuted }]}>
-                {address}
-                {apartment ? `, ${apartment}` : ''}
-              </Text>
+              <Text style={[styles.muted, { color: colors.textMuted }]}>{address}</Text>
               <Text style={[styles.muted, { color: colors.textMuted }]}>{city || DELIVERY_CITY}</Text>
               <Text style={[styles.muted, { color: colors.textMuted }]}>{recipientPhone}</Text>
               {instructions ? <Text style={[styles.muted, { color: colors.textMuted }]}>Instructions: {instructions}</Text> : null}
