@@ -8,9 +8,18 @@ export const testOutbox: Email[] = [];
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
+/** How outbound mail is delivered right now (for /health and OTP responses). */
+export function emailDeliveryMode(): 'resend' | 'console' | 'test' {
+  if (env.NODE_ENV === 'test') return 'test';
+  return resend ? 'resend' : 'console';
+}
+
 /**
  * Sends a transactional email through Resend. Without RESEND_API_KEY, development prints the
  * email to the terminal; production refuses to start without it (see env check below).
+ *
+ * With Resend's free `onboarding@resend.dev` sender you can only deliver to the email address
+ * on your Resend account. Verify your own domain and set EMAIL_FROM before emailing customers.
  */
 export async function sendEmail(email: Email): Promise<void> {
   if (env.NODE_ENV === 'test') {
@@ -22,7 +31,7 @@ export async function sendEmail(email: Email): Promise<void> {
     console.info(`\n[email:dev] To: ${email.to}\n[email:dev] Subject: ${email.subject}\n${email.text}\n`);
     return;
   }
-  const { error } = await resend.emails.send({
+  const { data, error } = await resend.emails.send({
     from: env.EMAIL_FROM,
     to: email.to,
     subject: email.subject,
@@ -31,10 +40,22 @@ export async function sendEmail(email: Email): Promise<void> {
   });
   if (error) {
     // Never log the email body: it may contain a one-time code.
+    const detail = [error.name, 'message' in error ? String((error as { message?: string }).message ?? '') : '']
+      .filter(Boolean)
+      .join(': ');
     // eslint-disable-next-line no-console
-    console.error(`Email to ${maskEmail(email.to)} failed: ${error.name}`);
-    throw new Error('Email could not be sent.');
+    console.error(`Email to ${maskEmail(email.to)} failed: ${detail || 'unknown Resend error'}`);
+    const testingOnly =
+      /only send testing emails|verify a domain|onboarding@resend\.dev/i.test(detail) ||
+      /only send testing emails|verify a domain/i.test(JSON.stringify(error));
+    throw new Error(
+      testingOnly
+        ? 'Resend will only deliver to your Resend account email until you verify a domain. Set EMAIL_FROM to an address on that domain, or request the code using the email you used to sign up for Resend.'
+        : 'Email could not be sent. Check RESEND_API_KEY and EMAIL_FROM on the server.',
+    );
   }
+  // eslint-disable-next-line no-console
+  console.info(`Email queued via Resend to ${maskEmail(email.to)} id=${data?.id ?? 'unknown'}`);
 }
 
 export function codeEmail(code: string, purpose: string) {

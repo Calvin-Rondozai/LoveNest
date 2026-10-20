@@ -38,7 +38,7 @@ npm run dev                     # http://localhost:3000
 - Admin dashboard: http://localhost:3000/admin
 - Legal pages: http://localhost:3000/legal
 
-Without the optional keys, development still works: emails (reset codes) print in the terminal, photos are stored in `data/uploads`, and payments use a **Paynow simulator** with Paynow's test numbers: `0771111111` pays after 5 seconds, `0772222222` after 15, `0773333333` cancels, `0774444444` fails with insufficient balance.
+Without the optional keys, development still works: emails (verification and reset codes) print in the terminal, photos are stored in `data/uploads`, and payments use a **Paynow simulator** with Paynow's test numbers: `0771111111` pays after 5 seconds, `0772222222` after 15, `0773333333` cancels, `0774444444` fails with insufficient balance. Check `GET /health` for `"email":"console"` (terminal) or `"email":"resend"` (live).
 
 **Production refuses to start** unless Resend, Cloudinary and Paynow are configured, so a live shop can never silently fake payments or lose reset emails.
 

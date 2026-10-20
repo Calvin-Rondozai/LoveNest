@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authClient } from '../lib/authClient';
+import { apiRequest, ApiRequestError } from '../lib/api';
 import { POLICIES, RateLimitError, assertNotLimited, recordAttempt, clearAttempts } from '../utils/rateLimit';
 import { sanitize } from '../utils/validation';
 import { toE164 } from '../utils/phone';
@@ -85,9 +86,18 @@ function fromServer(error: BetterAuthError, fallback: AuthErrorCode = 'unknown')
 const toAuthError = (e: unknown): AuthError => {
   if (e instanceof AuthError) return e;
   if (e instanceof RateLimitError) return new AuthError('rate_limited', e.retryAfterMs, e.message);
+  if (e instanceof ApiRequestError) {
+    if (e.status === 0) return new AuthError('network', undefined, e.message);
+    if (e.status === 429) return new AuthError('rate_limited', e.retryAfterMs, e.message);
+    return new AuthError('unknown', undefined, e.message);
+  }
   if (e instanceof TypeError) return new AuthError('network');
   return new AuthError('unknown');
 };
+
+async function sendOtp(path: '/api/otp/email-verification' | '/api/otp/password-reset', email: string) {
+  await apiRequest(path, { method: 'POST', body: { email }, auth: false });
+}
 
 type ServerUser = {
   id: string;
@@ -180,9 +190,9 @@ export const useAuth = create<AuthState>()(
           }
           if (err.code === 'email_not_verified') {
             try {
-              await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
-            } catch {
-              // Still throw email_not_verified so the screen can open VerifyOtp.
+              await sendOtp('/api/otp/email-verification', email);
+            } catch (sendErr) {
+              throw toAuthError(sendErr);
             }
           }
           throw err;
@@ -202,7 +212,8 @@ export const useAuth = create<AuthState>()(
           });
           if (error) throw fromServer(error);
           await recordAttempt(`signup:${DEVICE}`, POLICIES.signUp);
-          // Account exists but is not signed in until the email code is verified.
+          // Send the code through our own route so Resend failures are not hidden.
+          await sendOtp('/api/otp/email-verification', normalize(rawEmail));
         } catch (e) {
           throw toAuthError(e);
         }
@@ -212,8 +223,7 @@ export const useAuth = create<AuthState>()(
         const email = normalize(rawEmail);
         try {
           await assertNotLimited(`reset:${email}`);
-          const { error } = await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
-          if (error) throw fromServer(error);
+          await sendOtp('/api/otp/email-verification', email);
           await recordAttempt(`reset:${email}`, POLICIES.resetRequest);
         } catch (e) {
           throw toAuthError(e);
@@ -259,9 +269,7 @@ export const useAuth = create<AuthState>()(
         const email = normalize(rawEmail);
         try {
           await assertNotLimited(`reset:${email}`);
-          // Dedicated reset endpoint (no form CSRF). Always returns success so accounts are not revealed.
-          const { error } = await authClient.emailOtp.requestPasswordReset({ email });
-          if (error) throw fromServer(error);
+          await sendOtp('/api/otp/password-reset', email);
           await recordAttempt(`reset:${email}`, POLICIES.resetRequest);
         } catch (e) {
           throw toAuthError(e);

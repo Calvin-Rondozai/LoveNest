@@ -142,8 +142,10 @@ export const auth = betterAuth({
       otpLength: 6,
       expiresIn: 10 * 60,
       allowedAttempts: 5,
-      overrideDefaultEmailVerification: true,
-      sendVerificationOnSignUp: true,
+      // Do not auto-send on sign-up: Better Auth swallows Resend errors. The app
+      // calls /api/otp/email-verification, which waits for delivery.
+      overrideDefaultEmailVerification: false,
+      sendVerificationOnSignUp: false,
       async sendVerificationOTP({ email, otp, type }) {
         const { text, html } = codeEmail(otp, OTP_PURPOSE[type as keyof typeof OTP_PURPOSE] ?? 'continue');
         await sendEmail({ to: email, subject: `${otp} is your LoveNest code`, text, html });

@@ -26,6 +26,8 @@ async function signUp(email: string, name = 'Test Customer') {
     body: { email, password: 'Customer2026', name, phone: '0771234567', acceptedTermsVersion: '2026-10-09' },
   });
   expect(res.status).toBe(200);
+  const sent = await call('/api/otp/email-verification', { method: 'POST', ip: freshIp(), body: { email } });
+  expect(sent.status).toBe(200);
   const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
   expect(code).toMatch(/^\d{6}$/);
   const verified = await call('/api/auth/email-otp/verify-email', {

@@ -193,9 +193,13 @@ The **LoveNest name, logo and brand images are not covered** by that licence and
 
 ## Changelog
 
+### 2026-10-20 (OTP delivery)
+- Verification and password-reset codes are sent through `/api/otp`, which waits for Resend and returns an error if the email was not accepted. Existing accounts created before email verification was required can sign in without a code.
+- No legal change (same email codes, no new data collected).
+
 ### 2026-10-09 (delivery polish + auth fixes)
 - Delivery Details: removed apartment field; Mutare-only note is italic red text at the bottom of the page (not a card). Recipient phone still pre-fills from the account.
-- Profile save refreshes the session after update. Forgot-password uses `/email-otp/request-password-reset` so OTP emails send reliably on Expo.
+- Profile save refreshes the session after update. Forgot-password sends a 6-digit code by email.
 - No legal change (apartment was optional; no new data collected).
 
 ### 2026-10-09 (accounts, delivery, fees)

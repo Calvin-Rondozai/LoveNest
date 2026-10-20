@@ -11,7 +11,7 @@ describe('Stage 1: foundation', () => {
   it('health check reports the database is up', async () => {
     const { status, json } = await call('/health');
     expect(status).toBe(200);
-    expect(json).toMatchObject({ ok: true, db: 'up' });
+    expect(json).toMatchObject({ ok: true, db: 'up', email: 'test' });
   });
 
   it('returns JSON 404s and security headers', async () => {
@@ -57,6 +57,8 @@ describe('Stage 1: auth wiring', () => {
     });
     expect(status).toBe(200);
 
+    const sent = await call('/api/otp/email-verification', { method: 'POST', ip: freshIp(), body: { email } });
+    expect(sent.status).toBe(200);
     const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
     expect(code).toMatch(/^\d{6}$/);
 
@@ -106,7 +108,7 @@ describe('Stage 1: auth wiring', () => {
 
   it('resets a password with a 6-digit emailed code', async () => {
     testOutbox.length = 0;
-    const sent = await call('/api/auth/email-otp/request-password-reset', { method: 'POST', ip: freshIp(), body: { email } });
+    const sent = await call('/api/otp/password-reset', { method: 'POST', ip: freshIp(), body: { email } });
     expect(sent.status).toBe(200);
     const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
     expect(code).toMatch(/^\d{6}$/);
@@ -122,8 +124,26 @@ describe('Stage 1: auth wiring', () => {
   });
 
   it('does not reveal whether an email has an account when requesting a code', async () => {
-    const res = await call('/api/auth/email-otp/request-password-reset', { method: 'POST', ip: freshIp(), body: { email: 'nobody@example.com' } });
+    const res = await call('/api/otp/password-reset', { method: 'POST', ip: freshIp(), body: { email: 'nobody@example.com' } });
     expect(res.status).toBe(200);
+    expect(res.json.ok).toBe(true);
+  });
+
+  it('sends a verification code through the LoveNest OTP route', async () => {
+    const email = `otp-route-${Date.now()}@example.com`;
+    testOutbox.length = 0;
+    await call('/api/auth/sign-up/email', {
+      method: 'POST',
+      ip: freshIp(),
+      body: { email, password: 'Customer2026', name: 'Otp Route', phone: '0771234567', acceptedTermsVersion: '2026-10-09' },
+    });
+    const sent = await call('/api/otp/email-verification', { method: 'POST', ip: freshIp(), body: { email } });
+    expect(sent.status).toBe(200);
+    const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
+    expect(code).toMatch(/^\d{6}$/);
+
+    const verified = await call('/api/auth/email-otp/verify-email', { method: 'POST', ip: freshIp(), body: { email, otp: code } });
+    expect(verified.status).toBe(200);
   });
 
   it('lets a signed-in user update name and phone', async () => {
@@ -134,6 +154,7 @@ describe('Stage 1: auth wiring', () => {
       ip: freshIp(),
       body: { email, password: 'Customer2026', name: 'Before Name', phone: '0771234567', acceptedTermsVersion: '2026-10-09' },
     });
+    await call('/api/otp/email-verification', { method: 'POST', ip: freshIp(), body: { email } });
     const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
     const verified = await call('/api/auth/email-otp/verify-email', {
       method: 'POST',
