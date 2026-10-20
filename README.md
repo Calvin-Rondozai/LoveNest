@@ -18,7 +18,7 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 - Home dashboard with a search bar, a hero banner and category shortcuts. Search and **Shop Now** open the market.
 - Market (Categories tab) with an **All** view by default, category filters, and search across product names, descriptions and categories.
 - Product details, cart, and a 4-step checkout: **Cart → Delivery → Confirm → Payment**. Delivery is Mutare only; recipient name and phone are pre-filled from the account and can be edited on Confirm. Payment is EcoCash (PIN prompt on the customer's phone). Delivery fee is US$5 under US$50 subtotal, US$10 at US$50+.
-- **Order tracking**: My Orders shows each order's status and a progress bar; Order Details shows a step-by-step timeline (Order placed, Confirmed, Being prepared, Out for delivery, Delivered, or Cancelled), notes from the shop, items, delivery details and payment status. Status changes arrive as in-app notifications. Pull down to refresh.
+- **Order tracking**: My Orders shows each order's status and a progress bar; Order Details shows a step-by-step timeline (Order placed, Confirmed, Being prepared, Out for delivery, Delivered, or Cancelled), notes from the shop, items, delivery details and payment status. An order is only marked **Order placed** after EcoCash payment succeeds; unpaid or failed payments show Awaiting payment or Payment failed. Status changes arrive as in-app notifications. Pull down to refresh.
 
 **Accounts**
 - Email/password sign-up and login. Sign-up collects name, email, phone and password, then emails a **6-digit verification code** before the account can sign in. After the first sign-in, the app stays signed in until you log out, delete the app, or delete the account. New users land on Create Account; Login is shown after logout.
@@ -192,6 +192,10 @@ The source code is licensed under the [Apache License 2.0](LICENSE).
 The **LoveNest name, logo and brand images are not covered** by that licence and remain all rights reserved. See [`NOTICE`](NOTICE). Forks must use their own branding.
 
 ## Changelog
+
+### 2026-10-20 (unpaid orders)
+- Checkout no longer marks an order as placed on the phone until EcoCash payment succeeds. Failed or waiting payments show Payment failed or Awaiting payment, with an empty progress bar.
+- No legal change (same orders and payments; only when "placed" is shown).
 
 ### 2026-10-20 (payment + categories)
 - Payment pre-fills the EcoCash number from the customer's registered phone; they can still change it.

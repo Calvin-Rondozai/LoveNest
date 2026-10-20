@@ -9,7 +9,7 @@ import { PriceRow } from '../components/PriceRow';
 import { OrderTimeline, statusColor } from '../components/OrderProgress';
 import { useOrders } from '../store/orders';
 import { useToast } from '../store/toast';
-import { STATUS_INFO } from '../data/orderStatus';
+import { customerStatus } from '../data/orderStatus';
 import { ApiRequestError } from '../lib/api';
 import { openWhatsApp, WHATSAPP_DISPLAY } from '../utils/whatsapp';
 import { useTheme } from '../context/ThemeContext';
@@ -89,8 +89,8 @@ export const OrderDetailScreen = () => {
     );
   }
 
-  const info = STATUS_INFO[order.status];
-  const tint = statusColor(order.status, colors.textMuted);
+  const info = customerStatus(order);
+  const tint = statusColor(order, colors.textMuted);
   const lastNote = [...order.history].reverse().find((h) => h.note)?.note;
 
   return (

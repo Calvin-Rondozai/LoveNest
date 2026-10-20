@@ -179,6 +179,7 @@ describe('mobile money (development simulator)', () => {
     const res = await checkout(cookie, { ...delivery, items: [{ productId: products[4]!.id, quantity: 1 }], paymentMethod: 'ecocash', paymentPhone: '0774444444' });
     const { order: o } = await res.json();
     expect(o.paymentStatus).toBe('failed');
+    expect(o.status).toBe('placed');
     expect(o.paymentError).toMatch(/insufficient/i);
 
     const retry = await call(`/api/orders/${o.id}/pay`, { method: 'POST', cookie, body: { paymentMethod: 'ecocash', paymentPhone: '0771111111' } });

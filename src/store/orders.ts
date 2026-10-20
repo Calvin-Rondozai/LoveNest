@@ -2,14 +2,14 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequest } from '../lib/api';
-import { OrderStatus, STATUS_INFO } from '../data/orderStatus';
+import { OrderStatus, PaymentStatus, STATUS_INFO, fulfillmentStarted } from '../data/orderStatus';
 import { useNotifications } from './notifications';
 import { onSignOut } from './auth';
 
 export type OrderItem = { productId: string | null; name: string; price: number; quantity: number };
 export type OrderEvent = { status: OrderStatus; at: string; note?: string };
 export type PaymentMethod = 'ecocash';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type { PaymentStatus };
 
 /** Order as returned by the LoveNest API. */
 export type Order = {
@@ -62,13 +62,13 @@ type OrdersState = {
 function notifyChanges(previous: Order | undefined, next: Order) {
   if (!previous) return;
   const push = useNotifications.getState().push;
-  if (previous.status !== next.status) {
+  if (previous.status !== next.status && fulfillmentStarted(next)) {
     const info = STATUS_INFO[next.status];
     const note = [...next.history].reverse().find((h) => h.status === next.status)?.note;
     push({ title: `${info.label}: ${next.orderNumber}`, body: note ? `${info.customerMessage} ${note}` : info.customerMessage, icon: info.icon, target: 'orders' });
   }
   if (previous.paymentStatus !== 'paid' && next.paymentStatus === 'paid') {
-    push({ title: `Payment received: ${next.orderNumber}`, body: `We received US$${next.total.toFixed(2)}. Thank you!`, icon: 'card-outline', target: 'orders' });
+    push({ title: `Order placed: ${next.orderNumber}`, body: `We received US$${next.total.toFixed(2)}. Your order is placed.`, icon: 'bag-check-outline', target: 'orders' });
   }
 }
 
@@ -93,14 +93,7 @@ export const useOrders = create<OrdersState>()(
             body: input,
             headers: { 'Idempotency-Key': idempotencyKey },
           });
-          const placed = upsert(order);
-          useNotifications.getState().push({
-            title: 'Order placed successfully',
-            body: `Your order ${order.orderNumber} (US$${order.total.toFixed(2)}) is placed. We'll keep you updated here.`,
-            icon: 'bag-check-outline',
-            target: 'orders',
-          });
-          return placed;
+          return upsert(order);
         },
 
         refresh: async () => {

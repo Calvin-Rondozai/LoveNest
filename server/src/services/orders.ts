@@ -149,7 +149,14 @@ export async function createOrder(customer: Customer, input: CheckoutInput, idem
   }
   if (!orderId) throw new ApiError(503, 'try_again', 'Could not create your order. Please try again.');
 
-  await startMobilePayment(orderId, customer, input.paymentPhone, input.paymentMethod);
+  try {
+    await startMobilePayment(orderId, customer, input.paymentPhone, input.paymentMethod);
+  } catch {
+    await db
+      .update(order)
+      .set({ paymentStatus: 'failed', paymentError: 'Payment could not be started. Please try again.' })
+      .where(eq(order.id, orderId));
+  }
   return (await loadOrder({ id: orderId })).dto;
 }
 

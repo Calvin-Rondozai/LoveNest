@@ -17,8 +17,43 @@ export const STATUS_INFO: Record<OrderStatus, { label: string; icon: string; cus
 
 export const isFinal = (status: OrderStatus) => status === 'delivered' || status === 'cancelled';
 
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+
+type StatusView = { status: OrderStatus; paymentStatus: PaymentStatus };
+
+/** Payment must succeed before the shop treats the order as placed. */
+export const fulfillmentStarted = (order: StatusView) =>
+  order.status !== 'placed' || order.paymentStatus === 'paid' || order.paymentStatus === 'refunded';
+
+/** Customer-facing label. Unpaid and failed checkouts are not "Order placed". */
+export const customerStatus = (order: StatusView) => {
+  if (order.status === 'cancelled') return STATUS_INFO.cancelled;
+  if (order.status === 'placed' && order.paymentStatus === 'pending') {
+    return {
+      label: 'Awaiting payment',
+      icon: 'time-outline',
+      customerMessage: 'Approve the EcoCash PIN on your phone to complete this order. It is not placed until we receive payment.',
+    };
+  }
+  if (order.status === 'placed' && order.paymentStatus === 'failed') {
+    return {
+      label: 'Payment failed',
+      icon: 'close-circle-outline',
+      customerMessage: 'Payment was not completed, so this order is not placed. You can try paying again or cancel.',
+    };
+  }
+  return STATUS_INFO[order.status];
+};
+
 /** 0-based position on the happy path (cancelled orders keep the step they reached). */
 export const stepIndex = (status: OrderStatus) => ORDER_STEPS.indexOf(status);
+
+/** Progress before payment succeeds is empty so "Order placed" is not marked done. */
+export const progressIndex = (order: StatusView) => {
+  if (order.status === 'cancelled') return -1;
+  if (!fulfillmentStarted(order)) return -1;
+  return stepIndex(order.status);
+};
 
 export const nextStatus = (status: OrderStatus): OrderStatus | null => {
   const i = stepIndex(status);

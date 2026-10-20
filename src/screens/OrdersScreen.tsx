@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Icon } from '../components/Icon';
 import { OrderProgressBar, statusColor } from '../components/OrderProgress';
 import { useOrders } from '../store/orders';
-import { STATUS_INFO } from '../data/orderStatus';
+import { customerStatus } from '../data/orderStatus';
 import { useTheme } from '../context/ThemeContext';
 import { font, radii, spacing, primary } from '../theme';
 import { RootStackParamList } from '../navigation/types';
@@ -36,8 +36,8 @@ export const OrdersScreen = () => {
         contentContainerStyle={styles.list}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={primary} colors={[primary]} />}
         renderItem={({ item }) => {
-          const info = STATUS_INFO[item.status];
-          const tint = statusColor(item.status, colors.textMuted);
+          const info = customerStatus(item);
+          const tint = statusColor(item, colors.textMuted);
           const firstItem = item.items[0];
           const summary = firstItem
             ? `${firstItem.name}${item.items.length > 1 ? ` + ${item.items.length - 1} more` : ''}`
@@ -61,7 +61,7 @@ export const OrdersScreen = () => {
                   {summary}
                 </Text>
               ) : null}
-              <OrderProgressBar status={item.status} />
+              <OrderProgressBar order={item} />
               <View style={[styles.row, styles.footer]}>
                 <Text style={[styles.date, { color: colors.textMuted }]}>{formatDate(item.placedAt)}</Text>
                 <View style={styles.status}>

@@ -2,24 +2,29 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Icon } from './Icon';
 import { useTheme } from '../context/ThemeContext';
 import { Order } from '../store/orders';
-import { ORDER_STEPS, STATUS_INFO, stepIndex, OrderStatus } from '../data/orderStatus';
-import { font, radii, spacing, primary, success } from '../theme';
+import { ORDER_STEPS, STATUS_INFO, customerStatus, fulfillmentStarted, progressIndex, OrderStatus } from '../data/orderStatus';
+import { font, radii, spacing, primary, success, danger } from '../theme';
 
-export const statusColor = (status: OrderStatus, muted: string) =>
-  status === 'delivered' ? success : status === 'cancelled' ? muted : primary;
+export const statusColor = (order: { status: OrderStatus; paymentStatus: Order['paymentStatus'] }, muted: string) => {
+  if (order.status === 'delivered') return success;
+  if (order.status === 'cancelled') return muted;
+  if (order.status === 'placed' && order.paymentStatus === 'failed') return danger;
+  return primary;
+};
 
 const formatTime = (iso: string) =>
   new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 /** Compact segmented bar for order lists. */
-export const OrderProgressBar = ({ status }: { status: OrderStatus }) => {
+export const OrderProgressBar = ({ order }: { order: Pick<Order, 'status' | 'paymentStatus'> }) => {
   const { colors } = useTheme();
-  const reached = stepIndex(status);
-  const tint = statusColor(status, colors.textMuted);
+  const reached = progressIndex(order);
+  const tint = statusColor(order, colors.textMuted);
+  const label = customerStatus(order).label;
   return (
-    <View style={styles.bar} accessibilityRole="progressbar" accessibilityLabel={STATUS_INFO[status].label}>
+    <View style={styles.bar} accessibilityRole="progressbar" accessibilityLabel={label}>
       {ORDER_STEPS.map((step, i) => (
-        <View key={step} style={[styles.segment, { backgroundColor: status !== 'cancelled' && i <= reached ? tint : colors.border }]} />
+        <View key={step} style={[styles.segment, { backgroundColor: order.status !== 'cancelled' && i <= reached ? tint : colors.border }]} />
       ))}
     </View>
   );
@@ -31,15 +36,18 @@ export const OrderTimeline = ({ order }: { order: Order }) => {
   const cancelled = order.status === 'cancelled';
   // For cancelled orders, show the steps they reached, then the cancellation.
   const reachedSteps = new Set(order.history.map((h) => h.status));
-  const steps: OrderStatus[] = cancelled ? [...ORDER_STEPS.filter((s) => reachedSteps.has(s)), 'cancelled'] : ORDER_STEPS;
-  const current = cancelled ? steps.length - 1 : stepIndex(order.status);
+  const placedDone = fulfillmentStarted(order);
+  const steps: OrderStatus[] = cancelled
+    ? [...ORDER_STEPS.filter((s) => (s === 'placed' ? placedDone : reachedSteps.has(s))), 'cancelled']
+    : ORDER_STEPS;
+  const current = cancelled ? steps.length - 1 : progressIndex(order);
 
   return (
     <View>
       {steps.map((step, i) => {
         const done = i <= current;
         const isCurrent = i === current;
-        const event = [...order.history].reverse().find((h) => h.status === step);
+        const event = done ? [...order.history].reverse().find((h) => h.status === step) : undefined;
         const tint = step === 'cancelled' ? colors.textMuted : step === 'delivered' && done ? success : primary;
         const last = i === steps.length - 1;
         return (
