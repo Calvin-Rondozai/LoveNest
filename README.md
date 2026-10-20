@@ -21,7 +21,7 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 - **Order tracking**: My Orders shows each order's status and a progress bar; Order Details shows a step-by-step timeline (Order placed, Confirmed, Being prepared, Out for delivery, Delivered, or Cancelled), notes from the shop, items, delivery details and payment status. Status changes arrive as in-app notifications. Pull down to refresh.
 
 **Accounts**
-- Email/password sign-up and login. Sign-up collects name, email, phone and password, then emails a **6-digit verification code** before the account can sign in.
+- Email/password sign-up and login. Sign-up collects name, email, phone and password, then emails a **6-digit verification code** before the account can sign in. After the first sign-in, the app stays signed in until you log out, delete the app, or delete the account. New users land on Create Account; Login is shown after logout.
 - Forgot password with a **6-digit code**. The boxes turn green when the code is right and shake red when it's wrong; codes expire after 10 minutes.
 - Signing up requires accepting the Terms and Privacy Policy and confirming age 18+. The accepted version is recorded.
 - Profile: **Edit My Details** (name and phone) and **Change Password**.
@@ -42,7 +42,7 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 - Separate web dashboard in HTML, CSS, JavaScript and Bootstrap 5, designed to Apple's Human Interface Guidelines.
 - **Overview**: open orders, customers, new sign-ups and products, an "Orders to handle" list (oldest first), recent sign-ups and products.
 - **Orders**: search by order number, customer or recipient; filter Active, Delivered, Cancelled or All. Open an order to see the customer, recipient (tap to call), items, payment and full history, then move it to the next step with an optional message to the customer, or cancel it. Orders only move forward one step at a time; delivered and cancelled orders are locked. Cancelled paid orders are flagged "Refund due".
-- **Products**: search, filter by category, add and edit with photo upload (images are resized and compressed in the browser), hide or show in the app, delete.
+- **Products**: search, filter by category, add and edit with photo upload (images are resized and compressed in the browser), hide or show in the app, delete. Add or delete shop categories (a category can be deleted only when it has no products).
 - **Users**: search, filter by role, create (with a generated temporary password), edit name, role and status, suspend or reactivate, delete. You can't delete or demote yourself or the last admin.
 - Sidebar on wide screens and a floating tab bar on phones; follows light and dark mode; 44pt tap targets; confirmation only for deletes that can't be undone.
 
@@ -192,6 +192,15 @@ The source code is licensed under the [Apache License 2.0](LICENSE).
 The **LoveNest name, logo and brand images are not covered** by that licence and remain all rights reserved. See [`NOTICE`](NOTICE). Forks must use their own branding.
 
 ## Changelog
+
+### 2026-10-20 (payment + categories)
+- Payment pre-fills the EcoCash number from the customer's registered phone; they can still change it.
+- Admin dashboard can add and delete shop categories. Category dropdowns follow light and dark mode.
+- No legal change (same phone already collected; categories are shop data, not customer data).
+
+### 2026-10-20 (stay signed in)
+- After the first successful sign-in, the app opens on the shop instead of Login. Login shows for new users, after logout, after reinstall, or after account deletion.
+- No legal change (same session already described in the Privacy Policy).
 
 ### 2026-10-20 (OTP delivery)
 - Verification and password-reset codes are sent through `/api/otp`, which waits for Resend and returns an error if the email was not accepted. Existing accounts created before email verification was required can sign in without a code.

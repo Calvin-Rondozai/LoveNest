@@ -332,6 +332,25 @@ describe('admin: products', () => {
   });
 });
 
+describe('admin: categories', () => {
+  it('lets an admin add a category and list it in the shop', async () => {
+    const created = await call('/api/admin/categories', { method: 'POST', cookie: adminCookie, body: { name: 'Balloons' } });
+    expect(created.status).toBe(201);
+    expect(created.json.category).toMatchObject({ id: 'balloons', name: 'Balloons', icon: 'gift-outline' });
+    const listed = await call('/api/categories');
+    expect(listed.json.categories.some((c: { id: string }) => c.id === 'balloons')).toBe(true);
+    expect((await call('/api/admin/categories', { method: 'POST', cookie: adminCookie, body: { name: 'balloons' } })).status).toBe(409);
+    expect((await call('/api/admin/categories/balloons', { method: 'DELETE', cookie: adminCookie })).status).toBe(204);
+    expect((await call('/api/admin/categories/balloons', { method: 'DELETE', cookie: adminCookie })).status).toBe(404);
+  });
+
+  it('refuses to delete a category that still has products', async () => {
+    const res = await call('/api/admin/categories/flowers', { method: 'DELETE', cookie: adminCookie });
+    expect(res.status).toBe(409);
+    expect(res.json.error.code).toBe('in_use');
+  });
+});
+
 describe('security', () => {
   it('blocks state-changing requests from unknown websites', async () => {
     const res = await call('/api/admin/products', { method: 'POST', cookie: adminCookie, origin: 'https://evil.example', body: {} });

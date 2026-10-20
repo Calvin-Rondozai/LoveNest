@@ -79,6 +79,12 @@
       if (v.length < 2) return 'This name looks too short.';
       return v.length > 80 ? 'Keep the name under 80 characters.' : null;
     },
+    categoryName: function (v) {
+      v = v.trim();
+      if (!v) return 'Enter a category name.';
+      if (v.length < 2) return 'This name looks too short.';
+      return v.length > 40 ? 'Keep the name under 40 characters.' : null;
+    },
     price: function (v) {
       v = v.trim();
       if (!v) return 'Enter a price.';
@@ -126,9 +132,8 @@
   // Editing a field clears its own error so stale messages never linger.
   function clearFieldError(e) {
     var input = e.target;
-    var key = Object.keys(input.form ? (input.form === productForm ? productInputs : userInputs) : {}).find(function (k) {
-      return (input.form === productForm ? productInputs : userInputs)[k] === input;
-    });
+    var map = input.form === productForm ? productInputs : input.form === userForm ? userInputs : input.form === categoryForm ? { name: categoryNameInput } : {};
+    var key = Object.keys(map).find(function (k) { return map[k] === input; });
     if (!key) return;
     input.removeAttribute('aria-invalid');
     var row = input.closest('.field-row');
@@ -536,10 +541,61 @@
   var categoryFilter = $('#product-category-filter');
   function fillCategorySelects() {
     var options = api.categories.map(function (c) { return '<option value="' + esc(c.id) + '">' + esc(c.name) + '</option>'; }).join('');
+    var chosen = $('#product-category').value;
     categoryFilter.innerHTML = '<option value="all">All Categories</option>' + options;
     categoryFilter.value = state.productCategory;
-    $('#product-category').innerHTML = '<option value="" disabled selected>Choose</option>' + options;
+    $('#product-category').innerHTML = '<option value="" disabled>Choose</option>' + options;
+    if (chosen) $('#product-category').value = chosen;
   }
+
+  var categoryModalEl = $('#category-modal');
+  var categoryModal = new bootstrap.Modal(categoryModalEl);
+  var categoryForm = $('#category-form');
+  var categoryNameInput = $('#category-name');
+
+  function renderCategoryList() {
+    var onlyOne = api.categories.length <= 1;
+    $('#category-list').innerHTML = api.categories.map(function (c) {
+      var used = state.products.some(function (p) { return p.categoryId === c.id; });
+      var blocked = onlyOne || used;
+      var title = onlyOne ? 'Keep at least one category.' : used ? 'Move or delete the products in this category first.' : 'Delete ' + c.name;
+      return '<div class="field-row">' +
+        '<span class="field-label flex-grow-1">' + esc(c.name) + '</span>' +
+        '<button type="button" class="icon-button icon-button-sm" data-action="delete-category" data-id="' + esc(c.id) + '"' +
+          (blocked ? ' disabled' : '') + ' aria-label="' + esc(title) + '" title="' + esc(title) + '">' +
+          '<i class="bi bi-trash" aria-hidden="true"></i></button></div>';
+    }).join('');
+  }
+
+  function openCategories() {
+    clearErrors(categoryForm);
+    categoryNameInput.value = '';
+    renderCategoryList();
+    categoryModal.show();
+  }
+
+  categoryForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    clearErrors(categoryForm);
+    var name = categoryNameInput.value;
+    if (showErrors(categoryForm, { name: rules.categoryName(name) }, { name: categoryNameInput })) return;
+    var button = $('#category-save');
+    setBusy(button, true, 'Adding…');
+    try {
+      await api.createCategory(name.trim());
+      await api.loadCategories();
+      fillCategorySelects();
+      renderCategoryList();
+      renderProducts();
+      categoryNameInput.value = '';
+      notify('Category added');
+    } catch (err) {
+      if (err.code === 'name_taken') showErrors(categoryForm, { name: err.message }, { name: categoryNameInput });
+      else handleError(err);
+    } finally {
+      setBusy(button, false);
+    }
+  });
 
   $('#product-search').addEventListener('input', function () { state.productQuery = this.value; renderProducts(); });
   categoryFilter.addEventListener('change', function () { state.productCategory = this.value; renderProducts(); });
@@ -911,8 +967,23 @@
         if (okC) await changeOrderStatus(id, 'cancelled', null);
       }
 
+      if (action === 'manage-categories') openCategories();
       if (action === 'new-product') openProduct(null);
       if (action === 'edit-product' && product) openProduct(product);
+
+      if (action === 'delete-category') {
+        var cat = api.categories.find(function (c) { return c.id === id; });
+        if (!cat) return;
+        var okCat = await confirmDestructive('Delete "' + cat.name + '"?', 'This category will be removed from the shop. You can\'t undo this action.', 'Delete');
+        if (!okCat) return;
+        await api.deleteCategory(cat.id);
+        await api.loadCategories();
+        if (state.productCategory === cat.id) state.productCategory = 'all';
+        fillCategorySelects();
+        renderCategoryList();
+        renderProducts();
+        notify('Category deleted');
+      }
       if (action === 'new-user') openUser(null);
       if (action === 'edit-user' && user) openUser(user);
 
@@ -954,6 +1025,7 @@
 
   productForm.addEventListener('input', clearFieldError);
   productForm.addEventListener('change', clearFieldError);
+  categoryForm.addEventListener('input', clearFieldError);
   userForm.addEventListener('input', clearFieldError);
   userForm.addEventListener('change', clearFieldError);
 

@@ -32,6 +32,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export const RootNavigator = () => {
   const { mode, colors } = useTheme();
   const signedIn = useAuth((s) => s.user !== null);
+  const hasSignedInOnDevice = useAuth((s) => s.hasSignedInOnDevice);
   // Accounts created by an admin must replace their temporary password before anything else.
   const mustChangePassword = useAuth((s) => Boolean(s.user?.mustChangePassword));
   const seenOnboarding = useOnboarding((s) => s.seen);
@@ -66,8 +67,17 @@ export const RootNavigator = () => {
           </Stack.Group>
         ) : (
           <Stack.Group screenOptions={{ animation: 'slide_from_right' }}>
-            <Stack.Screen name="Login" component={LoginScreen} />
-            <Stack.Screen name="SignUp" component={SignUpScreen} />
+            {hasSignedInOnDevice ? (
+              <>
+                <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen name="SignUp" component={SignUpScreen} />
+              </>
+            ) : (
+              <>
+                <Stack.Screen name="SignUp" component={SignUpScreen} />
+                <Stack.Screen name="Login" component={LoginScreen} />
+              </>
+            )}
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="VerifyOtp" component={VerifyOtpScreen} />
             <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />

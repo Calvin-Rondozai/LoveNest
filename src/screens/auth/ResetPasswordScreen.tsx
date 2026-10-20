@@ -32,7 +32,7 @@ export const ResetPasswordScreen = () => {
     try {
       await resetPassword(email, otp, password);
       showToast('Password updated. Please log in.');
-      navigation.popTo('Login');
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch (e) {
       const err = e as AuthError;
       // The code expired or was used up while choosing a password: start again.

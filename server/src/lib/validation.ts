@@ -17,6 +17,7 @@ export const LIMITS = {
   giftMessage: 300,
   productName: 80,
   productDescription: 500,
+  categoryName: 40,
   orderNote: 200,
 } as const;
 

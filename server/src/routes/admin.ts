@@ -72,6 +72,19 @@ const productSchema = z.object({
   visible: z.boolean(),
 });
 
+const categorySchema = z.object({
+  name: text.clean(2, LIMITS.categoryName, 'Name'),
+});
+
+function slugFromName(name: string) {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+  return slug || `cat-${crypto.randomUUID().slice(0, 8)}`;
+}
+
 async function assertCategory(id: string) {
   const [row] = await db.select().from(category).where(eq(category.id, id));
   if (!row) throw badRequest('Choose a valid category.', { categoryId: 'Choose a valid category.' });
@@ -134,6 +147,46 @@ export const adminRoutes = new Hono<AppEnv>()
     if (target.role === 'admin' && (await activeAdminCount(id)) === 0) throw conflict('last_admin', 'You need at least one admin.');
     // Removes the user, their sessions and sign-in methods. Orders stay for accounting, unlinked.
     await auth.api.removeUser({ headers: c.req.raw.headers, body: { userId: id } });
+    return c.body(null, 204);
+  })
+
+  .get('/categories', async (c) => {
+    const rows = await db.select().from(category).orderBy(sql`${category.sortOrder} asc`);
+    return c.json({ categories: rows.map((row) => ({ id: row.id, name: row.name, icon: row.icon, iconSet: row.iconSet, sortOrder: row.sortOrder })) });
+  })
+
+  .post('/categories', async (c) => {
+    const input = await parseBody(c, categorySchema);
+    const existing = await db.select({ id: category.id, name: category.name }).from(category);
+    if (existing.some((row) => row.name.toLowerCase() === input.name.toLowerCase())) {
+      throw conflict('name_taken', 'A category with this name already exists.');
+    }
+    let id = slugFromName(input.name);
+    const taken = new Set(existing.map((row) => row.id));
+    if (taken.has(id)) {
+      let n = 2;
+      while (taken.has(`${id}-${n}`)) n += 1;
+      id = `${id}-${n}`;
+    }
+    const [maxRow] = await db.select({ n: sql<number>`coalesce(max(${category.sortOrder}), 0)` }).from(category);
+    const [row] = await db
+      .insert(category)
+      .values({ id, name: input.name, icon: 'gift-outline', iconSet: 'ion', sortOrder: Number(maxRow?.n ?? 0) + 1 })
+      .returning();
+    return c.json({ category: { id: row!.id, name: row!.name, icon: row!.icon, iconSet: row!.iconSet, sortOrder: row!.sortOrder } }, 201);
+  })
+
+  .delete('/categories/:id', async (c) => {
+    const id = c.req.param('id');
+    const [row] = await db.select().from(category).where(eq(category.id, id));
+    if (!row) throw notFound('Category');
+    const [total] = await db.select({ n: sql<number>`count(*)` }).from(category);
+    if (Number(total?.n ?? 0) <= 1) throw conflict('last_category', 'Keep at least one category.');
+    const [inUse] = await db.select({ n: sql<number>`count(*)` }).from(product).where(eq(product.categoryId, id));
+    if (Number(inUse?.n ?? 0) > 0) {
+      throw conflict('in_use', 'Move or delete the products in this category first.');
+    }
+    await db.delete(category).where(eq(category.id, id));
     return c.body(null, 204);
   })
 

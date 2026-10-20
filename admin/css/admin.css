@@ -7,6 +7,7 @@
  */
 
 :root {
+  color-scheme: light;
   --ln-tint: #E2233F;            /* 4.62:1 on white */
   --ln-tint-pressed: #C01C35;
   --ln-on-tint: #FFFFFF;
@@ -36,6 +37,7 @@
 }
 
 [data-bs-theme="dark"] {
+  color-scheme: dark;
   --ln-tint: #FF4D67;            /* 5.27:1 on #1C1C1E */
   --ln-tint-pressed: #FF6B81;
   --ln-on-tint: #FFFFFF;
@@ -140,6 +142,8 @@ body {
   transition: opacity 0.15s ease;
 }
 .icon-button:active { opacity: 0.45; }
+.icon-button:disabled,
+.icon-button-sm:disabled { color: var(--ln-label-3); }
 .icon-button-sm { font-size: 1.15rem; color: var(--ln-label-2); }
 
 /* ---------- Sign in ---------- */
@@ -193,7 +197,21 @@ body {
 }
 .field-input::placeholder { color: var(--ln-placeholder); }
 .field-row:focus-within { box-shadow: inset 3px 0 0 var(--ln-tint); }
-.field-select { appearance: auto; cursor: pointer; }
+.field-select,
+.filter-select,
+.form-select {
+  appearance: auto;
+  cursor: pointer;
+  color-scheme: inherit;
+  color: var(--ln-label);
+}
+.field-select option,
+.filter-select option,
+.form-select option {
+  color: var(--ln-label);
+  background-color: var(--ln-surface);
+}
+.field-select { background-color: transparent; }
 .field-textarea { padding: 12px 16px; width: 100%; resize: vertical; min-height: 110px; display: block; }
 .switch-row { padding-right: 16px; }
 .form-switch .form-check-input { width: 3.1em; height: 1.85em; cursor: pointer; }
@@ -294,6 +312,7 @@ body {
 }
 
 .page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 4px 0 16px; }
+.page-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .large-title { font-size: 2.125rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
 
 /* Tab bar: floating, translucent, icons above single-word labels */

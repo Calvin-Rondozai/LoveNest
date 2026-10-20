@@ -149,7 +149,7 @@ export const SignUpScreen = () => {
 
       <View style={styles.footer}>
         <Text style={[styles.footerText, { color: colors.textMuted }]}>Already have an account? </Text>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={8}>
+        <Pressable onPress={() => navigation.navigate('Login')} hitSlop={8}>
           <Text style={styles.link}>Log in</Text>
         </Pressable>
       </View>

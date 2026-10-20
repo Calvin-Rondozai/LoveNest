@@ -122,9 +122,18 @@
     // ---------- catalog ----------
 
     loadCategories: async function () {
-      var data = await request('/api/categories');
+      var data = await request('/api/admin/categories');
       api.categories = data.categories;
       return api.categories;
+    },
+
+    createCategory: async function (name) {
+      var data = await request('/api/admin/categories', { method: 'POST', body: { name: name } });
+      return data.category;
+    },
+
+    deleteCategory: async function (id) {
+      await request('/api/admin/categories/' + encodeURIComponent(id), { method: 'DELETE' });
     },
 
     // ---------- users ----------

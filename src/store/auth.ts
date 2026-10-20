@@ -127,6 +127,8 @@ const DEVICE = 'device';
 
 type AuthState = {
   user: User | null;
+  /** True after a successful sign-in on this device. Survives logout so Login is the return screen. */
+  hasSignedInOnDevice: boolean;
   /** Re-checks the stored session with the server at startup. */
   restoreSession: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
@@ -156,18 +158,19 @@ export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
+      hasSignedInOnDevice: false,
 
       restoreSession: async () => {
         if (!get().user) return;
         try {
           const { data, error } = await authClient.getSession();
-          if (error) return; // offline or server down: keep the cached user for now
-          if (!data) {
-            wipeLocalData();
-            set({ user: null });
+          if (error) return; // offline or server down: keep the cached user
+          if (data?.user) {
+            set({ user: toUser(data.user as ServerUser), hasSignedInOnDevice: true });
             return;
           }
-          set({ user: toUser(data.user as ServerUser) });
+          // Empty session: keep the cached profile so Login is not shown again until they log out.
+          // API calls that need a live cookie still go through the server.
         } catch {
           // Network failure: keep the cached user.
         }
@@ -181,7 +184,7 @@ export const useAuth = create<AuthState>()(
           const { data, error } = await authClient.signIn.email({ email, password });
           if (error || !data) throw fromServer(error, 'invalid_credentials');
           clearAttempts(`login:${email}`);
-          set({ user: toUser(data.user as ServerUser) });
+          set({ user: toUser(data.user as ServerUser), hasSignedInOnDevice: true });
         } catch (e) {
           const err = toAuthError(e);
           if (err.code === 'invalid_credentials') {
@@ -239,12 +242,12 @@ export const useAuth = create<AuthState>()(
           clearAttempts(`otp:${email}`);
           const session = await authClient.getSession();
           if (session.data?.user) {
-            set({ user: toUser(session.data.user as ServerUser) });
+            set({ user: toUser(session.data.user as ServerUser), hasSignedInOnDevice: true });
             return;
           }
           // Some builds return the user on verifyEmail without a separate session fetch.
           if ((data as { user?: ServerUser }).user) {
-            set({ user: toUser((data as { user: ServerUser }).user) });
+            set({ user: toUser((data as { user: ServerUser }).user), hasSignedInOnDevice: true });
             return;
           }
           throw new AuthError('unknown', undefined, 'Email verified. Please sign in.');
@@ -262,7 +265,7 @@ export const useAuth = create<AuthState>()(
           // Offline: the local session is still cleared below.
         }
         wipeLocalData();
-        set({ user: null });
+        set({ user: null, hasSignedInOnDevice: true });
       },
 
       requestPasswordReset: async (rawEmail) => {
@@ -350,7 +353,7 @@ export const useAuth = create<AuthState>()(
           const { error } = await authClient.deleteUser(password ? { password } : {});
           if (error) throw fromServer(error);
           wipeLocalData();
-          set({ user: null });
+          set({ user: null, hasSignedInOnDevice: false });
         } catch (e) {
           throw toAuthError(e);
         }
@@ -358,11 +361,15 @@ export const useAuth = create<AuthState>()(
     }),
     {
       name: 'lovenest.auth',
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => AsyncStorage),
-      // Only the profile is cached for instant start-up; the session itself lives in SecureStore.
-      partialize: (state) => ({ user: state.user }),
-      migrate: () => ({ user: null }),
+      // Profile and "has signed in on this device" stay on disk; the session cookie lives in SecureStore.
+      partialize: (state) => ({ user: state.user, hasSignedInOnDevice: state.hasSignedInOnDevice }),
+      migrate: (persisted) => {
+        const prev = persisted as { user?: User | null; hasSignedInOnDevice?: boolean } | undefined;
+        const user = prev?.user ?? null;
+        return { user, hasSignedInOnDevice: Boolean(prev?.hasSignedInOnDevice || user) };
+      },
     },
   ),
 );

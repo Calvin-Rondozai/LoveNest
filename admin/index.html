@@ -179,9 +179,12 @@
         <section data-page="products" hidden>
           <div class="page-header">
             <h1 class="large-title">Products</h1>
-            <button type="button" class="btn btn-primary" data-action="new-product">
-              <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Add Product</span>
-            </button>
+            <div class="page-actions">
+              <button type="button" class="btn btn-plain" data-action="manage-categories">Categories</button>
+              <button type="button" class="btn btn-primary" data-action="new-product">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Add Product</span>
+              </button>
+            </div>
           </div>
 
           <div class="filter-bar">
@@ -317,6 +320,34 @@
             </div>
           </div>
           <p class="group-footnote">Hidden products stay saved but customers cannot see or buy them.</p>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ Categories sheet ============ -->
+  <div class="modal fade" id="category-modal" tabindex="-1" aria-labelledby="category-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
+      <form class="modal-content sheet" id="category-form" novalidate>
+        <div class="modal-header">
+          <button type="button" class="btn btn-plain" data-bs-dismiss="modal">Done</button>
+          <h2 class="modal-title" id="category-modal-title">Categories</h2>
+          <span class="btn btn-plain invisible" aria-hidden="true">Done</span>
+        </div>
+        <div class="modal-body">
+          <p class="group-label">In the shop</p>
+          <div class="grouped-fields" id="category-list"></div>
+          <p class="group-footnote">Delete a category only after its products are moved or removed. Keep at least one.</p>
+
+          <p class="group-label">Add a category</p>
+          <div class="grouped-fields">
+            <label class="field-row">
+              <span class="field-label">Name</span>
+              <input type="text" id="category-name" class="field-input" placeholder="Balloons" maxlength="40" required>
+            </label>
+          </div>
+          <p class="field-error" data-error-for="name" hidden></p>
+          <button type="submit" class="btn btn-primary mt-3" id="category-save">Add Category</button>
         </div>
       </form>
     </div>

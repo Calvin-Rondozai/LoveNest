@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -9,13 +9,14 @@ import { Button } from '../components/Button';
 import { FormField } from '../components/FormField';
 import { KeyboardSafe } from '../components/KeyboardSafe';
 import { useCheckout } from '../store/checkout';
+import { useAuth } from '../store/auth';
 import { useCart, cartSubtotal } from '../store/cart';
 import { useCatalog } from '../store/catalog';
 import { useOrders } from '../store/orders';
 import { useToast } from '../store/toast';
 import { ApiRequestError } from '../lib/api';
 import { toE164 } from '../utils/phone';
-import { mobileMoneyError } from '../utils/mobileMoney';
+import { formatLocal, mobileMoneyError } from '../utils/mobileMoney';
 import { deliveryFeeFor } from '../utils/deliveryFee';
 import { useTheme } from '../context/ThemeContext';
 import { font, radii, spacing, primary } from '../theme';
@@ -25,6 +26,7 @@ import { RootStackParamList } from '../navigation/types';
 export const PaymentMethodScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
+  const user = useAuth((s) => s.user);
   const checkout = useCheckout();
   const { paymentPhone, update } = checkout;
   const items = useCart((s) => s.items);
@@ -40,6 +42,13 @@ export const PaymentMethodScreen = () => {
   const [placing, setPlacing] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const placingRef = useRef(false); // guards double taps before React re-renders
+
+  useEffect(() => {
+    if (paymentPhone.trim() || !user?.phone) return;
+    update({ paymentPhone: formatLocal(user.phone) });
+    // Prefill once per checkout draft; the customer can still change it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.phone]);
 
   const pay = async () => {
     if (placingRef.current || items.length === 0) return;
