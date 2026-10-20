@@ -122,8 +122,13 @@
     // ---------- catalog ----------
 
     loadCategories: async function () {
-      var data = await request('/api/admin/categories');
-      api.categories = data.categories;
+      try {
+        var data = await request('/api/admin/categories');
+        api.categories = data.categories;
+      } catch (e) {
+        var fallback = await request('/api/categories');
+        api.categories = fallback.categories;
+      }
       return api.categories;
     },
 

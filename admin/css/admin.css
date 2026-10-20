@@ -63,7 +63,8 @@
 
 /* ---------- Base ---------- */
 
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; color-scheme: light; }
+html[data-bs-theme="dark"] { color-scheme: dark; }
 body {
   background: var(--ln-bg);
   color: var(--ln-label);
@@ -202,13 +203,24 @@ body {
 .form-select {
   appearance: auto;
   cursor: pointer;
-  color-scheme: inherit;
   color: var(--ln-label);
+}
+html[data-bs-theme="light"] .field-select,
+html[data-bs-theme="light"] .filter-select,
+html[data-bs-theme="light"] .form-select {
+  color-scheme: light;
+  color: #000000;
+}
+html[data-bs-theme="dark"] .field-select,
+html[data-bs-theme="dark"] .filter-select,
+html[data-bs-theme="dark"] .form-select {
+  color-scheme: dark;
+  color: #ffffff;
 }
 .field-select option,
 .filter-select option,
 .form-select option {
-  color: var(--ln-label);
+  color: inherit;
   background-color: var(--ln-surface);
 }
 .field-select { background-color: transparent; }
@@ -519,9 +531,9 @@ body {
 
 /* ---------- Sheets (modals) ---------- */
 
-.modal-content.sheet { background: var(--ln-bg); border: 0; border-radius: 14px; }
-.sheet .modal-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-bottom: 0.5px solid var(--ln-separator); background: var(--ln-bar); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-.sheet .modal-title { font-size: 1.0625rem; font-weight: 600; margin: 0; }
+.modal-content.sheet { background: var(--ln-bg); color: var(--ln-label); border: 0; border-radius: 14px; }
+.sheet .modal-header { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-bottom: 0.5px solid var(--ln-separator); background: var(--ln-bar); color: var(--ln-label); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+.sheet .modal-title { font-size: 1.0625rem; font-weight: 600; margin: 0; color: var(--ln-label); }
 .sheet .modal-body { padding: 16px 16px 28px; }
 @media (max-width: 575.98px) {
   .modal-fullscreen-sm-down .modal-content.sheet { border-radius: 0; }

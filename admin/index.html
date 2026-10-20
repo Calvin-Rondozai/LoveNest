@@ -10,8 +10,8 @@
   <link rel="icon" href="img/favicon.png">
   <link rel="stylesheet" href="vendor/bootstrap/bootstrap.min.css">
   <link rel="stylesheet" href="vendor/bootstrap-icons/bootstrap-icons.min.css">
-  <link rel="stylesheet" href="css/admin.css">
-  <script src="js/theme.js"></script>
+  <link rel="stylesheet" href="css/admin.css?v=20261020c">
+  <script src="js/theme.js?v=20261020c"></script>
 </head>
 <body>
 
@@ -180,7 +180,7 @@
           <div class="page-header">
             <h1 class="large-title">Products</h1>
             <div class="page-actions">
-              <button type="button" class="btn btn-plain" data-action="manage-categories">Categories</button>
+              <button type="button" class="btn btn-plain" id="manage-categories" data-action="manage-categories" data-bs-toggle="modal" data-bs-target="#category-modal">Categories</button>
               <button type="button" class="btn btn-primary" data-action="new-product">
                 <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Add Product</span>
               </button>
@@ -332,7 +332,7 @@
         <div class="modal-header">
           <button type="button" class="btn btn-plain" data-bs-dismiss="modal">Done</button>
           <h2 class="modal-title" id="category-modal-title">Categories</h2>
-          <span class="btn btn-plain invisible" aria-hidden="true">Done</span>
+          <button type="button" class="btn btn-plain fw-semibold" id="category-save" data-action="add-category">Add</button>
         </div>
         <div class="modal-body">
           <p class="group-label">In the shop</p>
@@ -343,11 +343,10 @@
           <div class="grouped-fields">
             <label class="field-row">
               <span class="field-label">Name</span>
-              <input type="text" id="category-name" class="field-input" placeholder="Balloons" maxlength="40" required>
+              <input type="text" id="category-name" class="field-input" placeholder="Balloons" maxlength="40" autocomplete="off">
             </label>
           </div>
           <p class="field-error" data-error-for="name" hidden></p>
-          <button type="submit" class="btn btn-primary mt-3" id="category-save">Add Category</button>
         </div>
       </form>
     </div>
@@ -450,8 +449,8 @@
   </div>
 
   <script src="vendor/bootstrap/bootstrap.bundle.min.js"></script>
-  <script src="js/orderStatus.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/orderStatus.js?v=20261020c"></script>
+  <script src="js/api.js?v=20261020c"></script>
+  <script src="js/app.js?v=20261020c"></script>
 </body>
 </html>

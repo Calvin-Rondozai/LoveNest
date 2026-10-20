@@ -195,7 +195,7 @@ The **LoveNest name, logo and brand images are not covered** by that licence and
 
 ### 2026-10-20 (payment + categories)
 - Payment pre-fills the EcoCash number from the customer's registered phone; they can still change it.
-- Admin dashboard can add and delete shop categories. Category dropdowns follow light and dark mode.
+- Admin dashboard can add and delete shop categories. Category dropdowns follow light and dark mode. Products → Categories opens the editor; Add in the sheet header saves a new category.
 - No legal change (same phone already collected; categories are shop data, not customer data).
 
 ### 2026-10-20 (stay signed in)

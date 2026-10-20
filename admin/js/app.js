@@ -549,13 +549,16 @@
   }
 
   var categoryModalEl = $('#category-modal');
-  var categoryModal = new bootstrap.Modal(categoryModalEl);
+  var categoryModal = categoryModalEl ? new bootstrap.Modal(categoryModalEl) : null;
   var categoryForm = $('#category-form');
   var categoryNameInput = $('#category-name');
+  var addingCategory = false;
 
   function renderCategoryList() {
+    var list = $('#category-list');
+    if (!list) return;
     var onlyOne = api.categories.length <= 1;
-    $('#category-list').innerHTML = api.categories.map(function (c) {
+    list.innerHTML = api.categories.map(function (c) {
       var used = state.products.some(function (p) { return p.categoryId === c.id; });
       var blocked = onlyOne || used;
       var title = onlyOne ? 'Keep at least one category.' : used ? 'Move or delete the products in this category first.' : 'Delete ' + c.name;
@@ -568,21 +571,27 @@
   }
 
   function openCategories() {
-    clearErrors(categoryForm);
-    categoryNameInput.value = '';
-    renderCategoryList();
-    categoryModal.show();
+    if (categoryModal) categoryModal.show();
   }
 
-  categoryForm.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    clearErrors(categoryForm);
-    var name = categoryNameInput.value;
+  if (categoryModalEl) {
+    categoryModalEl.addEventListener('shown.bs.modal', function () {
+      if (categoryForm) clearErrors(categoryForm);
+      renderCategoryList();
+      if (categoryNameInput) categoryNameInput.focus();
+    });
+  }
+
+  async function addCategory() {
+    if (addingCategory || !categoryNameInput) return;
+    if (categoryForm) clearErrors(categoryForm);
+    var name = categoryNameInput.value.trim();
     if (showErrors(categoryForm, { name: rules.categoryName(name) }, { name: categoryNameInput })) return;
     var button = $('#category-save');
-    setBusy(button, true, 'Adding…');
+    addingCategory = true;
+    if (button) setBusy(button, true, 'Adding…');
     try {
-      await api.createCategory(name.trim());
+      await api.createCategory(name);
       await api.loadCategories();
       fillCategorySelects();
       renderCategoryList();
@@ -593,9 +602,22 @@
       if (err.code === 'name_taken') showErrors(categoryForm, { name: err.message }, { name: categoryNameInput });
       else handleError(err);
     } finally {
-      setBusy(button, false);
+      addingCategory = false;
+      if (button) setBusy(button, false);
     }
-  });
+  }
+
+  if (categoryForm) {
+    categoryForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      addCategory();
+    });
+  }
+  if (categoryNameInput) {
+    categoryNameInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); addCategory(); }
+    });
+  }
 
   $('#product-search').addEventListener('input', function () { state.productQuery = this.value; renderProducts(); });
   categoryFilter.addEventListener('change', function () { state.productCategory = this.value; renderProducts(); });
@@ -968,6 +990,10 @@
       }
 
       if (action === 'manage-categories') openCategories();
+      if (action === 'add-category') {
+        e.preventDefault();
+        await addCategory();
+      }
       if (action === 'new-product') openProduct(null);
       if (action === 'edit-product' && product) openProduct(product);
 

@@ -126,7 +126,9 @@ if (existsSync(ADMIN_DIR)) {
   app.use('/admin/*', async (c, next) => {
     await next();
     c.header('Content-Security-Policy', ADMIN_CSP);
-    c.header('Cache-Control', c.req.path.endsWith('/') || c.req.path.endsWith('.html') ? 'no-cache' : 'public, max-age=3600');
+    const path = c.req.path;
+    const live = path.endsWith('/') || /\.(html|js|css)$/.test(path);
+    c.header('Cache-Control', live ? 'no-cache' : 'public, max-age=3600');
   });
   app.use('/admin/*', serveStatic({ root: fromCwd(ADMIN_DIR), rewriteRequestPath: (p) => p.replace(/^\/admin/, '') }));
 }

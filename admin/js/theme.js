@@ -2,9 +2,7 @@
 (function () {
   var mq = window.matchMedia('(prefers-color-scheme: dark)');
   var apply = function () {
-    var theme = mq.matches ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-bs-theme', theme);
-    document.documentElement.style.colorScheme = theme;
+    document.documentElement.setAttribute('data-bs-theme', mq.matches ? 'dark' : 'light');
   };
   apply();
   mq.addEventListener('change', apply);
