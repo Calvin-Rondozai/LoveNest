@@ -27,6 +27,10 @@ export const user = sqliteTable("user", {
   acceptedTermsAt: integer("accepted_terms_at", { mode: "timestamp_ms" }),
   /** Zimbabwe mobile number in E.164 (+263…), collected at sign-up. */
   phone: text("phone"),
+  /** Preset question id chosen at sign-up; used to recover a forgotten password. */
+  securityQuestion: text("security_question"),
+  /** HMAC-SHA256 of the normalised answer; the plaintext answer is never stored. */
+  securityAnswerHash: text("security_answer_hash"),
 });
 
 export const session = sqliteTable(

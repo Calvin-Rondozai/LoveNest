@@ -14,9 +14,10 @@ export type RootStackParamList = {
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: { email?: string } | undefined;
-  /** purpose: reset = forgot password; verify = confirm email after sign-up or blocked sign-in */
-  VerifyOtp: { email: string; purpose: 'reset' | 'verify' };
-  ResetPassword: { email: string; otp: string };
+  SecurityQuestion: { email: string; question: string };
+  /** Confirm email after sign-up or a blocked sign-in. */
+  VerifyOtp: { email: string; purpose: 'verify' };
+  ResetPassword: { email: string; answer: string };
   Tabs: NavigatorScreenParams<TabParamList>;
   ProductDetail: { productId: string };
   Cart: undefined;

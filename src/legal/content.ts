@@ -8,8 +8,8 @@
 // `[[…]]` placeholder in LEGAL_INFO. Bump LEGAL_VERSION whenever the text
 // changes materially so users can be asked to accept the new version.
 
-export const LEGAL_VERSION = '2026-10-09';
-export const EFFECTIVE_DATE = '9 October 2026';
+export const LEGAL_VERSION = '2026-10-21';
+export const EFFECTIVE_DATE = '21 October 2026';
 
 export const LEGAL_INFO = {
   appName: 'LoveNest Gifts',
@@ -51,6 +51,7 @@ const privacy: LegalDocument = {
       paragraphs: ['We only collect what we need to run the service:'],
       bullets: [
         'Account information: your name, email address, phone number and password. Passwords are stored by our servers in hashed form and are never visible to our staff.',
+        'Security question: when you create an account you choose a question from a preset list and give a short answer. We store the question you chose and a hashed form of your answer. We never store the answer in readable form, and staff cannot read it.',
         'Email verification: when you create an account we send a one-time code to your email so we can confirm you control that address before you sign in.',
         'Order and delivery information: the items you order, recipient name, recipient phone number, delivery address (currently Mutare), delivery instructions and any gift message you write. Checkout may pre-fill your account name and phone as the recipient; you can change those details before paying.',
         'Payment information: EcoCash payments and transaction references. Mobile money payments are processed by the payment provider; we never see or store your mobile money PIN. The EcoCash PIN prompt appears on your phone from EcoCash, not inside the LoveNest app.',
@@ -62,9 +63,9 @@ const privacy: LegalDocument = {
     {
       heading: '3. How we use your information',
       bullets: [
-        'To create and manage your account and sign you in, including verifying your email with a one-time code.',
+        'To create and manage your account and sign you in, including verifying your email with a one-time code and letting you reset a forgotten password by answering your security question.',
         'To process, deliver and support your orders, including contacting you or the recipient about a delivery.',
-        'To send service messages such as email verification codes, order confirmations, delivery progress updates (for example "Out for delivery"), short notes from our team about your order, and password reset codes.',
+        'To send service messages such as email verification codes, order confirmations, delivery progress updates (for example "Out for delivery") and short notes from our team about your order.',
         'To protect accounts and the service, including limiting repeated sign-in attempts and detecting fraud or abuse.',
         'To meet our legal, tax and accounting obligations.',
         'To improve the app, using aggregated information that does not identify you.',
@@ -93,7 +94,7 @@ const privacy: LegalDocument = {
       bullets: [
         'Delivery partners and couriers, who receive the recipient details needed to deliver your order.',
         'Paynow (Zimbabwe), our payment gateway, and your mobile money operator (EcoCash), which receive your order reference, amount, payment phone number and email to process the payment.',
-        'Service providers that run LoveNest on our behalf and may only use the data for that purpose: Render (application hosting), Turso (database), Resend (sending emails such as verification and password reset codes) and Cloudinary (product photos; no customer data).',
+        'Service providers that run LoveNest on our behalf and may only use the data for that purpose: Render (application hosting), Turso (database), Resend (sending emails such as verification codes) and Cloudinary (product photos; no customer data).',
         'Authorities, courts or regulators where the law requires it, or to protect the rights, property or safety of LoveNest, our customers or others.',
         'A buyer or successor if our business is sold or restructured, subject to this policy.',
       ],
@@ -116,7 +117,7 @@ const privacy: LegalDocument = {
     {
       heading: '9. How we protect your information',
       paragraphs: [
-        'We use encryption in transit (HTTPS), hashed passwords, access controls and limits on repeated sign-in and verification attempts. No system is perfectly secure, so please use a strong, unique password and keep your device secure. We will notify you and the regulator of a data breach where the law requires it.',
+        'We use encryption in transit (HTTPS), hashed passwords, hashed security answers, access controls and limits on repeated sign-in, verification and password-recovery attempts. No system is perfectly secure, so please use a strong, unique password, choose a security question only you can answer, and keep your device secure. We will notify you and the regulator of a data breach where the law requires it.',
       ],
     },
     {
@@ -175,6 +176,8 @@ const terms: LegalDocument = {
       bullets: [
         'Provide accurate, current information and keep it up to date.',
         'Keep your password confidential. You are responsible for activity on your account. You can change your password at any time in the app under Profile, Change Password.',
+        'When you create an account you choose a security question and answer. If you forget your password, you reset it in the app by answering that question. Choose an answer only you would know, and keep it private.',
+        'If your account was created before security questions were required, or you cannot remember your answer, contact us on WhatsApp so we can help you reset the password.',
         'If we create an account for you, we will give you a temporary password, and you must choose a new one the first time you sign in.',
         'Tell us immediately if you suspect unauthorised use of your account.',
         'We may limit repeated sign-in, verification or ordering attempts to protect accounts and the service.',

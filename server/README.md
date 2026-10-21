@@ -6,7 +6,7 @@ The backend for the LoveNest mobile app and admin dashboard: accounts, products,
 |---|---|
 | Runtime | Node.js 20 (TypeScript, ES modules) |
 | Web framework | Hono 4 on `@hono/node-server` |
-| Auth | Better Auth 1.7: email and password, phone, email verification codes, admin roles, suspension, Expo |
+| Auth | Better Auth 1.7: email and password, phone, email verification codes, security-question password reset, admin roles, suspension, Expo |
 | Database | Turso (libSQL / SQLite) via Drizzle ORM; a local SQLite file in development |
 | Email | Resend |
 | Photos | Cloudinary |
@@ -15,7 +15,7 @@ The backend for the LoveNest mobile app and admin dashboard: accounts, products,
 
 ## What it does
 
-- **Accounts**: sign-up with phone (Terms acceptance required and recorded), email verification code, sign-in, 6-digit password reset codes by email, change password, update profile, delete account, 30-day sessions.
+- **Accounts**: sign-up with phone and a security question (Terms acceptance required and recorded), email verification code, sign-in, password reset by answering the security question, change password, update profile, delete account, 30-day sessions.
 - **Admin users API**: list, create (with a temporary password the user must change), rename, change role, suspend or reactivate (signs them out), delete. You can never remove your own admin access or the last admin.
 - **Catalog**: public categories and visible products for the app; admins create, edit, hide and delete products and upload photos (type checked by file signature, max 5 MB, stored on Cloudinary).
 - **Checkout**: prices, totals and stock come from the database only. Stock is reserved in the same transaction as the order, so the last item can't be sold twice. Every checkout carries an idempotency key, so a retry never creates a second order.
@@ -38,7 +38,7 @@ npm run dev                     # http://localhost:3000
 - Admin dashboard: http://localhost:3000/admin
 - Legal pages: http://localhost:3000/legal
 
-Without the optional keys, development still works: emails (verification and reset codes) print in the terminal, photos are stored in `data/uploads`, and payments use a **Paynow simulator** with Paynow's test numbers: `0771111111` pays after 5 seconds, `0772222222` after 15, `0773333333` cancels, `0774444444` fails with insufficient balance. Check `GET /health` for `"email":"console"` (terminal) or `"email":"resend"` (live).
+Without the optional keys, development still works: verification emails print in the terminal, photos are stored in `data/uploads`, and payments use a **Paynow simulator** with Paynow's test numbers: `0771111111` pays after 5 seconds, `0772222222` after 15, `0773333333` cancels, `0774444444` fails with insufficient balance. Check `GET /health` for `"email":"console"` (terminal) or `"email":"resend"` (live).
 
 **Production refuses to start** unless Resend, Cloudinary and Paynow are configured, so a live shop can never silently fake payments or lose reset emails.
 

@@ -9,6 +9,7 @@ import * as schema from './db/schema.js';
 import { env, isProd } from './env.js';
 import { codeEmail, sendEmail } from './lib/email.js';
 import { toE164 } from './lib/validation.js';
+import { hashAnswer, isSecurityQuestionId, validateAnswer } from './lib/security-question.js';
 
 const OTP_PURPOSE = {
   'forget-password': 'reset your password',
@@ -56,6 +57,8 @@ export const auth = betterAuth({
       acceptedTermsVersion: { type: 'string', required: false },
       acceptedTermsAt: { type: 'date', required: false, input: false },
       phone: { type: 'string', required: false, input: true },
+      securityQuestion: { type: 'string', required: false, input: true, returned: false },
+      securityAnswerHash: { type: 'string', required: false, input: true, returned: false },
     },
   },
 
@@ -88,7 +91,13 @@ export const auth = betterAuth({
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
       if (ctx.path === '/sign-up/email') {
-        const body = ctx.body as { acceptedTermsVersion?: unknown; phone?: unknown } | undefined;
+        const body = ctx.body as {
+          acceptedTermsVersion?: unknown;
+          phone?: unknown;
+          securityQuestion?: unknown;
+          securityAnswer?: unknown;
+          securityAnswerHash?: unknown;
+        } | undefined;
         const version = body?.acceptedTermsVersion;
         if (typeof version !== 'string' || !version.trim()) {
           throw new APIError('BAD_REQUEST', { message: 'You must accept the Terms of Use and Privacy Policy.' });
@@ -98,8 +107,24 @@ export const auth = betterAuth({
         if (!e164 || !/^\+2637[1-8]\d{7}$/.test(e164)) {
           throw new APIError('BAD_REQUEST', { message: 'Enter a valid Zimbabwe phone number, for example 0771 234 567.' });
         }
+        if (!isSecurityQuestionId(body?.securityQuestion)) {
+          throw new APIError('BAD_REQUEST', { message: 'Choose a security question.' });
+        }
+        const answerProblem = validateAnswer(body?.securityAnswer);
+        if (answerProblem) {
+          throw new APIError('BAD_REQUEST', { message: answerProblem });
+        }
         // Normalise to E.164 before Better Auth stores the field.
-        (ctx.body as { phone: string }).phone = e164;
+        const next = ctx.body as {
+          phone: string;
+          securityQuestion: string;
+          securityAnswer?: unknown;
+          securityAnswerHash: string;
+        };
+        next.phone = e164;
+        next.securityQuestion = body.securityQuestion;
+        next.securityAnswerHash = hashAnswer(String(body.securityAnswer));
+        delete next.securityAnswer;
       }
       if (ctx.path === '/update-user') {
         const body = ctx.body as { phone?: unknown } | undefined;

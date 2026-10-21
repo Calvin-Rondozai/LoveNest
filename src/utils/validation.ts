@@ -10,6 +10,7 @@ export const LIMITS = {
   apartment: 60,
   city: 60,
   instructions: 300,
+  securityAnswer: 80,
 } as const;
 
 /** Trim, drop control characters and collapse runs of whitespace. */
@@ -63,6 +64,14 @@ export const passwordError = (password: string, { email }: { email?: string } = 
 export const confirmError = (password: string, confirm: string) => {
   if (!confirm) return 'Confirm your password';
   return confirm === password ? null : 'Passwords do not match';
+};
+
+export const securityAnswerError = (answer: string) => {
+  const value = sanitize(answer);
+  if (!value) return 'Enter an answer';
+  if (value.length < 2) return 'Your answer looks too short';
+  if (value.length > LIMITS.securityAnswer) return `Keep the answer under ${LIMITS.securityAnswer} characters`;
+  return null;
 };
 
 /** Required free-text field with a min/max length. */

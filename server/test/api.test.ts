@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { app } from '../src/app.js';
-import { call, freshIp } from './helpers.js';
+import { call, freshIp, RECOVERY } from './helpers.js';
 import { seed } from '../src/db/seed.js';
 import { db } from '../src/db/client.js';
 import { order, product, user } from '../src/db/schema.js';
@@ -23,7 +23,7 @@ async function signUp(email: string, name = 'Test Customer') {
   const res = await call('/api/auth/sign-up/email', {
     method: 'POST',
     ip: freshIp(),
-    body: { email, password: 'Customer2026', name, phone: '0771234567', acceptedTermsVersion: '2026-10-09' },
+    body: { email, password: 'Customer2026', name, phone: '0771234567', acceptedTermsVersion: '2026-10-09', ...RECOVERY },
   });
   expect(res.status).toBe(200);
   const sent = await call('/api/otp/email-verification', { method: 'POST', ip: freshIp(), body: { email } });

@@ -18,6 +18,8 @@ export const authClient = createAuthClient({
         mustChangePassword: { type: 'boolean', required: false },
         acceptedTermsVersion: { type: 'string', required: false },
         phone: { type: 'string', required: false },
+        securityQuestion: { type: 'string', required: false },
+        securityAnswer: { type: 'string', required: false },
       },
     }),
   ],

@@ -86,6 +86,6 @@ const maskEmail = (e: string) => e.replace(/^(.).*(@.*)$/, '$1***$2');
 
 if (isProd && !env.RESEND_API_KEY) {
   // eslint-disable-next-line no-console
-  console.error('RESEND_API_KEY is required in production: password reset codes cannot be delivered without it.');
+  console.error('RESEND_API_KEY is required in production: email verification codes cannot be delivered without it.');
   process.exit(1);
 }

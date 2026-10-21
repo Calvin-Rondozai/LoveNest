@@ -9,14 +9,25 @@ import { ConsentCheckbox, InlineLink } from '../../components/ConsentCheckbox';
 import { PasswordChecklist } from '../../components/PasswordChecklist';
 import { useAuth, AuthError } from '../../store/auth';
 import { useLockout, formatWait } from '../../utils/rateLimit';
-import { nameError, emailError, passwordError, confirmError, compactErrors, LIMITS } from '../../utils/validation';
+import { nameError, emailError, passwordError, confirmError, securityAnswerError, compactErrors, LIMITS } from '../../utils/validation';
 import { phoneError, isPhoneValid } from '../../utils/phone';
 import { LEGAL_VERSION } from '../../legal/content';
+import { SECURITY_QUESTIONS, type SecurityQuestionId } from '../../data/securityQuestions';
 import { useTheme } from '../../context/ThemeContext';
-import { font, spacing, primary, danger } from '../../theme';
+import { font, spacing, radii, primary, danger } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
-type Errors = { name?: string; email?: string; phone?: string; password?: string; confirm?: string; terms?: string; form?: string };
+type Errors = {
+  name?: string;
+  email?: string;
+  phone?: string;
+  password?: string;
+  confirm?: string;
+  question?: string;
+  answer?: string;
+  terms?: string;
+  form?: string;
+};
 
 export const SignUpScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -29,6 +40,8 @@ export const SignUpScreen = () => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [questionId, setQuestionId] = useState<SecurityQuestionId | null>(null);
+  const [answer, setAnswer] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
@@ -50,14 +63,16 @@ export const SignUpScreen = () => {
         : (phoneError(phone) ?? (isPhoneValid(phone) ? null : 'Enter a complete phone number')),
       password: passwordError(password, { email }),
       confirm: confirmError(password, confirm),
+      question: questionId ? null : 'Choose a security question',
+      answer: securityAnswerError(answer),
       terms: agreed ? null : 'You must accept the Terms of Use and Privacy Policy',
     });
     setErrors(next);
-    if (Object.keys(next).length) return;
+    if (Object.keys(next).length || !questionId) return;
 
     setLoading(true);
     try {
-      await signUp(name, email, phone, password, LEGAL_VERSION);
+      await signUp(name, email, phone, password, LEGAL_VERSION, questionId, answer);
       navigation.navigate('VerifyOtp', { email: email.trim().toLowerCase(), purpose: 'verify' });
     } catch (e) {
       handleError(e);
@@ -128,6 +143,43 @@ export const SignUpScreen = () => {
         error={errors.confirm}
       />
 
+      <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Security question</Text>
+      <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
+        You will answer this question if you forget your password. Choose something only you would know.
+      </Text>
+      {SECURITY_QUESTIONS.map((q) => {
+        const selected = questionId === q.id;
+        return (
+          <Pressable
+            key={q.id}
+            onPress={() => setQuestionId(q.id)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            style={[
+              styles.question,
+              {
+                borderColor: errors.question && !questionId ? danger : selected ? primary : colors.border,
+                backgroundColor: colors.surface,
+              },
+            ]}
+          >
+            <Text style={[styles.questionText, { color: colors.text, fontFamily: selected ? font.sansSemi : font.sans }]}>{q.label}</Text>
+          </Pressable>
+        );
+      })}
+      {errors.question ? <Text style={styles.fieldError}>{errors.question}</Text> : null}
+      <FormField
+        label="Your answer"
+        icon="create-outline"
+        value={answer}
+        onChangeText={setAnswer}
+        placeholder="A short answer you will remember"
+        autoCapitalize="none"
+        autoComplete="off"
+        maxLength={LIMITS.securityAnswer}
+        error={errors.answer}
+      />
+
       <ConsentCheckbox checked={agreed} onToggle={() => setAgreed((a) => !a)} error={errors.terms}>
         I am 18 or older and agree to the{' '}
         <InlineLink label="Terms of Use" onPress={() => navigation.navigate('Legal', { doc: 'terms' })} /> and{' '}
@@ -163,4 +215,17 @@ const styles = StyleSheet.create({
   formError: { color: danger, fontSize: font.size.sm, fontFamily: font.sansMedium, textAlign: 'center', marginBottom: spacing.md },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xl },
   footerText: { fontSize: font.size.sm, fontFamily: font.sans },
+  sectionLabel: { fontSize: font.size.xs, fontFamily: font.sansMedium, marginBottom: spacing.xs },
+  sectionHint: { fontSize: font.size.xs, fontFamily: font.sans, marginBottom: spacing.sm },
+  question: {
+    borderWidth: 1,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    marginBottom: spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  questionText: { fontSize: font.size.sm },
+  fieldError: { color: danger, fontSize: font.size.xs, fontFamily: font.sansMedium, marginBottom: spacing.md, marginTop: -spacing.xs },
 });

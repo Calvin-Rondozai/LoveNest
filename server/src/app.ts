@@ -21,6 +21,7 @@ import { orderRoutes } from './routes/orders.js';
 import { paymentRoutes } from './routes/payments.js';
 import { adminRoutes } from './routes/admin.js';
 import { otpRoutes } from './routes/otp.js';
+import { recoveryRoutes } from './routes/recovery.js';
 import { emailDeliveryMode } from './lib/email.js';
 
 export type AppEnv = {
@@ -95,6 +96,7 @@ app.get('/api/me', (c) => {
 app.route('/api', catalogRoutes);
 app.route('/api/orders', orderRoutes);
 app.route('/api/otp', otpRoutes);
+app.route('/api/recovery', recoveryRoutes);
 app.route('/api/admin', adminRoutes);
 
 app.get('/health', async (c) => {

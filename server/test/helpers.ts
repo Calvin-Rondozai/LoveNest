@@ -4,6 +4,9 @@ let ipCounter = 0;
 /** A distinct client IP per test, so rate limits from one test never affect another. */
 export const freshIp = () => `10.0.${Math.floor(++ipCounter / 250)}.${ipCounter % 250}`;
 
+/** Security question collected at sign-up (required for password recovery). */
+export const RECOVERY = { securityQuestion: 'first_pet', securityAnswer: 'Misty' };
+
 type Options = { method?: string; body?: unknown; cookie?: string; ip?: string; origin?: string };
 
 export async function call(path: string, { method = 'GET', body, cookie, ip = '127.0.0.1', origin }: Options = {}) {

@@ -21,8 +21,8 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 - **Order tracking**: My Orders shows each order's status and a progress bar; Order Details shows a step-by-step timeline (Order placed, Confirmed, Being prepared, Out for delivery, Delivered, or Cancelled), notes from the shop, items, delivery details and payment status. An order is only marked **Order placed** after EcoCash payment succeeds; unpaid or failed payments show Awaiting payment or Payment failed. Status changes arrive as in-app notifications. Pull down to refresh.
 
 **Accounts**
-- Email/password sign-up and login. Sign-up collects name, email, phone and password, then emails a **6-digit verification code** before the account can sign in. After the first sign-in, the app stays signed in until you log out, delete the app, or delete the account. New users land on Create Account; Login is shown after logout.
-- Forgot password with a **6-digit code**. The boxes turn green when the code is right and shake red when it's wrong; codes expire after 10 minutes.
+- Email/password sign-up and login. Sign-up collects name, email, phone, password and a **security question**, then emails a **6-digit verification code** before the account can sign in. After the first sign-in, the app stays signed in until you log out, delete the app, or delete the account. New users land on Create Account; Login is shown after logout.
+- Forgot password uses the **security question** chosen at sign-up. Email OTP is only used to verify a new account. Older accounts without a question contact LoveNest on WhatsApp.
 - Signing up requires accepting the Terms and Privacy Policy and confirming age 18+. The accepted version is recorded.
 - Profile: **Edit My Details** (name and phone) and **Change Password**.
 - In-app **Delete Account**, as Google Play requires.
@@ -89,12 +89,12 @@ npx expo run:android            # builds the debug APK, installs it on the runni
 npx expo start                  # afterwards, just start the dev server and open the LoveNest app
 ```
 
-The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk` (the `android/` folder is generated and not committed). It uses `ANDROID_PACKAGE` from `.env`; `com.lovenest.app` is a development placeholder until you choose the permanent name.
+The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. A release APK is `android/app/build/outputs/apk/release/app-release.apk` (`npx expo run:android --variant release`). The `android/` folder is generated and not committed. Builds use `ANDROID_PACKAGE` from `.env`; `com.lovenest.app` is a development placeholder until you choose the permanent name.
 
 ### Trying it in development
 
 - **Sign-up**: create an account; the 6-digit email code prints in the server terminal (until Resend is configured). Enter it to verify, then you are signed in.
-- **Password reset**: Forgot password, enter your email, and the 6-digit code prints in the server terminal.
+- **Password reset**: Forgot password, enter your email, answer the security question you chose at sign-up, then set a new password.
 - **Mobile money**: without Paynow keys the server simulates Paynow (no real EcoCash PIN popup). Pay with `0771111111` to succeed, `0773333333` to cancel or `0774444444` for insufficient balance. With live Paynow keys, EcoCash shows the PIN prompt on the customer's phone.
 - **Onboarding again**: clear the app's storage, or reinstall.
 
@@ -114,7 +114,7 @@ App.tsx                     Fonts, splash screen and storage loading, theme prov
 src/
   navigation/               Root stack (onboarding → login screens → app) and bottom tabs
   screens/                  Home, Categories (market), Cart, checkout, Orders, Profile, Notifications, Onboarding
-    auth/                   Login, Sign up, Forgot password, Verify code, Reset password
+    auth/                   Login, Sign up, Forgot password, Security question, Verify code, Reset password
     legal/                  Legal document viewer, Delete account
   components/               Shared UI: Button, FormField, OtpInput, SearchBar, AuthLayout…
   store/                    Zustand stores: auth, cart, checkout, orders, notifications, onboarding, toast
@@ -122,6 +122,7 @@ src/
   legal/content.ts          Single source of truth for the Privacy Policy, Terms and Refund Policy
   data/catalog.ts           Categories and products (static for now)
   data/orderStatus.ts       Order steps shared with admin/js/orderStatus.js and the server
+  data/securityQuestions.ts Preset questions chosen at sign-up for password reset
   theme.ts                  Colours, spacing, radii, fonts
 scripts/build-legal-site.mjs  Builds legal-site/*.html from the legal content
 server/                     Backend API (Hono, Better Auth, Drizzle, Turso); see server/README.md
@@ -156,7 +157,7 @@ Typography: **Poppins** for UI and **Pacifico** for script accents. The app icon
 | Database (users, products, orders) | **Turso** (5 GB free), accessed through Drizzle so it can move to Postgres later |
 | Product photos | **Cloudinary** (25 free credits a month, automatic resizing for mobile) |
 | Server (login, payments, admin API) | **Render** free web service, kept awake by an **UptimeRobot** ping |
-| Login | **Better Auth** on that server: email and password, phone on the account, email verification codes, 6-digit reset codes |
+| Login | **Better Auth** on that server: email and password, phone on the account, email verification codes, security-question password reset |
 | Payments | **Paynow** (EcoCash). The integration key stays on the server; orders are only marked paid after the server confirms with Paynow |
 | Emails | **Resend** (3,000 a month, 100 a day) |
 
@@ -170,7 +171,7 @@ The client-side checks are for user experience only. Before launch, the backend 
 - own the order lifecycle: accept status changes from admins only, allow just "next step" or "cancel", and record each change with a timestamp and optional note;
 - let the app fetch the signed-in customer's orders (`GET /orders`) so admin updates appear in My Orders, and later send push notifications for each change;
 - re-validate every field and enforce its own rate limits, returning `429` + `Retry-After` (already mapped to the app's lockout UI);
-- hash passwords, expire reset codes after 10 minutes, and invalidate them after 5 wrong attempts;
+- hash passwords, hash security answers, and rate-limit password recovery;
 - use idempotency keys when creating orders and payments;
 - actually delete account data within the 30 days promised in the Privacy Policy.
 
@@ -192,6 +193,14 @@ The source code is licensed under the [Apache License 2.0](LICENSE).
 The **LoveNest name, logo and brand images are not covered** by that licence and remain all rights reserved. See [`NOTICE`](NOTICE). Forks must use their own branding.
 
 ## Changelog
+
+### 2026-10-21 (security question reset)
+- Forgot password no longer emails a reset code. At Create Account you choose a security question and answer; that answer (hashed) is how you reset the password. Email OTP remains for verifying a new account. Accounts without a question (created earlier or by an admin) are directed to WhatsApp.
+- Privacy Policy and Terms updated for the security question, hashed answers, and WhatsApp recovery. `LEGAL_VERSION` is 2026-10-21.
+
+### 2026-10-20 (splash)
+- Native splash screen background is black.
+- No legal change (visual only).
 
 ### 2026-10-20 (unpaid orders)
 - Checkout no longer marks an order as placed on the phone until EcoCash payment succeeds. Failed or waiting payments show Payment failed or Awaiting payment, with an empty progress bar.

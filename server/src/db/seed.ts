@@ -41,14 +41,24 @@ export async function seed() {
           name: env.SEED_ADMIN_NAME,
           acceptedTermsVersion: env.LEGAL_VERSION,
           phone: '+263771111111',
-        },
+          // Satisfies the sign-up hook; cleared below so shop-created accounts
+          // recover through WhatsApp, not a published seed answer.
+          securityQuestion: 'first_pet',
+          securityAnswer: 'LoveNest seed',
+        } as never,
       });
       [admin] = await db.select().from(user).where(eq(user.email, email));
     }
     if (admin) {
       await db
         .update(user)
-        .set({ role: 'admin', emailVerified: true, phone: admin.phone || '+263771111111' })
+        .set({
+          role: 'admin',
+          emailVerified: true,
+          phone: admin.phone || '+263771111111',
+          securityQuestion: null,
+          securityAnswerHash: null,
+        })
         .where(eq(user.id, admin.id));
     }
     return { admin: email };

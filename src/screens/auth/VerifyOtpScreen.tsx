@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { AuthLayout } from '../../components/AuthLayout';
 import { OtpInput, OtpStatus } from '../../components/OtpInput';
 import { Button } from '../../components/Button';
@@ -15,13 +14,9 @@ const CODE_LENGTH = 6;
 const RESEND_SECONDS = 30;
 
 export const VerifyOtpScreen = () => {
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { email, purpose } = useRoute<RouteProp<RootStackParamList, 'VerifyOtp'>>().params;
-  const verifyingEmail = purpose === 'verify';
+  const { email } = useRoute<RouteProp<RootStackParamList, 'VerifyOtp'>>().params;
   const { colors } = useTheme();
-  const verifyResetCode = useAuth((s) => s.verifyResetCode);
   const verifyEmailCode = useAuth((s) => s.verifyEmailCode);
-  const requestPasswordReset = useAuth((s) => s.requestPasswordReset);
   const requestEmailVerification = useAuth((s) => s.requestEmailVerification);
   const showToast = useToast((s) => s.show);
 
@@ -29,7 +24,6 @@ export const VerifyOtpScreen = () => {
   const [status, setStatus] = useState<OtpStatus>('idle');
   const [checking, setChecking] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>();
-  // Expired / locked / rate-limited codes can't be retried; only a new code helps.
   const [dead, setDead] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -45,16 +39,9 @@ export const VerifyOtpScreen = () => {
   const verify = async (value: string) => {
     setChecking(true);
     try {
-      if (verifyingEmail) {
-        await verifyEmailCode(email, value);
-        setStatus('success');
-        showToast('Email verified. Welcome to LoveNest!', 3000);
-        // RootNavigator switches to the signed-in stack once user is set.
-      } else {
-        await verifyResetCode(email, value);
-        setStatus('success');
-        timers.current.push(setTimeout(() => navigation.replace('ResetPassword', { email, otp: value }), 900));
-      }
+      await verifyEmailCode(email, value);
+      setStatus('success');
+      showToast('Email verified. Welcome to LoveNest!', 3000);
     } catch (e) {
       const err = e as AuthError;
       setStatus('error');
@@ -83,8 +70,7 @@ export const VerifyOtpScreen = () => {
 
   const resend = async () => {
     try {
-      if (verifyingEmail) await requestEmailVerification(email);
-      else await requestPasswordReset(email);
+      await requestEmailVerification(email);
       showToast('A new code is on its way');
       setCode('');
       setStatus('idle');
@@ -102,8 +88,7 @@ export const VerifyOtpScreen = () => {
       title="Enter Verification Code"
       subtitle={
         <>
-          {verifyingEmail ? 'We sent a 6-digit code to verify' : 'We sent a 6-digit code to'}
-          {'\n'}
+          We sent a 6-digit code to verify{'\n'}
           <Text style={{ color: colors.text, fontFamily: font.sansSemi }}>{email}</Text>
         </>
       }

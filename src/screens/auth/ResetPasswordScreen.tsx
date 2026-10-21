@@ -14,7 +14,7 @@ import { RootStackParamList } from '../../navigation/types';
 
 export const ResetPasswordScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { email, otp } = useRoute<RouteProp<RootStackParamList, 'ResetPassword'>>().params;
+  const { email, answer } = useRoute<RouteProp<RootStackParamList, 'ResetPassword'>>().params;
   const resetPassword = useAuth((s) => s.resetPassword);
   const showToast = useToast((s) => s.show);
 
@@ -30,15 +30,14 @@ export const ResetPasswordScreen = () => {
 
     setLoading(true);
     try {
-      await resetPassword(email, otp, password);
+      await resetPassword(email, answer, password);
       showToast('Password updated. Please log in.');
       navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
     } catch (e) {
       const err = e as AuthError;
-      // The code expired or was used up while choosing a password: start again.
-      if (err.code === 'code_invalid' || err.code === 'code_expired' || err.code === 'code_locked') {
-        showToast('Your code expired. Request a new one.', 4000);
-        navigation.popTo('ForgotPassword', { email });
+      if (err.code === 'wrong_answer') {
+        showToast('That answer does not match. Please try again.', 4000);
+        navigation.goBack();
         return;
       }
       setErrors({ form: err.message });

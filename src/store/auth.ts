@@ -33,6 +33,8 @@ export type AuthErrorCode =
   | 'code_locked'
   | 'session_expired'
   | 'cancelled'
+  | 'wrong_answer'
+  | 'recovery_unavailable'
   | 'unknown';
 
 const MESSAGES: Record<AuthErrorCode, string> = {
@@ -47,6 +49,8 @@ const MESSAGES: Record<AuthErrorCode, string> = {
   code_locked: 'Too many wrong codes. Request a new one.',
   session_expired: 'For your security, please sign out, sign in again and retry.',
   cancelled: 'Cancelled',
+  wrong_answer: 'That answer does not match. Please try again.',
+  recovery_unavailable: 'This account has no security question. Message LoveNest on WhatsApp to reset the password.',
   unknown: 'Something went wrong. Please try again.',
 };
 
@@ -89,14 +93,16 @@ const toAuthError = (e: unknown): AuthError => {
   if (e instanceof ApiRequestError) {
     if (e.status === 0) return new AuthError('network', undefined, e.message);
     if (e.status === 429) return new AuthError('rate_limited', e.retryAfterMs, e.message);
+    if (e.code === 'wrong_answer') return new AuthError('wrong_answer', undefined, e.message);
+    if (e.code === 'recovery_unavailable') return new AuthError('recovery_unavailable', undefined, e.message);
     return new AuthError('unknown', undefined, e.message);
   }
   if (e instanceof TypeError) return new AuthError('network');
   return new AuthError('unknown');
 };
 
-async function sendOtp(path: '/api/otp/email-verification' | '/api/otp/password-reset', email: string) {
-  await apiRequest(path, { method: 'POST', body: { email }, auth: false });
+async function sendOtp(email: string) {
+  await apiRequest('/api/otp/email-verification', { method: 'POST', body: { email }, auth: false });
 }
 
 type ServerUser = {
@@ -133,15 +139,22 @@ type AuthState = {
   restoreSession: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   /** Creates the account and emails a verification code. Does not sign the user in yet. */
-  signUp: (name: string, email: string, phone: string, password: string, termsVersion: string) => Promise<void>;
+  signUp: (
+    name: string,
+    email: string,
+    phone: string,
+    password: string,
+    termsVersion: string,
+    securityQuestion: string,
+    securityAnswer: string,
+  ) => Promise<void>;
   /** Confirms the email code after sign-up (or after a blocked sign-in). Signs the user in. */
   verifyEmailCode: (email: string, code: string) => Promise<void>;
   /** Sends a fresh email-verification code. */
   requestEmailVerification: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
-  requestPasswordReset: (email: string) => Promise<void>;
-  verifyResetCode: (email: string, code: string) => Promise<void>;
-  resetPassword: (email: string, code: string, password: string) => Promise<void>;
+  lookupRecoveryQuestion: (email: string) => Promise<{ question: string }>;
+  resetPassword: (email: string, answer: string, password: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   updateProfile: (fields: { name: string; phone: string }) => Promise<void>;
   deleteAccount: (password?: string) => Promise<void>;
@@ -193,7 +206,7 @@ export const useAuth = create<AuthState>()(
           }
           if (err.code === 'email_not_verified') {
             try {
-              await sendOtp('/api/otp/email-verification', email);
+              await sendOtp(email);
             } catch (sendErr) {
               throw toAuthError(sendErr);
             }
@@ -202,7 +215,7 @@ export const useAuth = create<AuthState>()(
         }
       },
 
-      signUp: async (rawName, rawEmail, rawPhone, password, termsVersion) => {
+      signUp: async (rawName, rawEmail, rawPhone, password, termsVersion, securityQuestion, securityAnswer) => {
         try {
           await assertNotLimited(`signup:${DEVICE}`);
           const phone = toE164(rawPhone) ?? rawPhone.trim();
@@ -212,11 +225,13 @@ export const useAuth = create<AuthState>()(
             name: sanitize(rawName),
             phone,
             acceptedTermsVersion: termsVersion,
-          });
+            securityQuestion,
+            securityAnswer: sanitize(securityAnswer),
+          } as Parameters<typeof authClient.signUp.email>[0] & { securityQuestion: string; securityAnswer: string });
           if (error) throw fromServer(error);
           await recordAttempt(`signup:${DEVICE}`, POLICIES.signUp);
           // Send the code through our own route so Resend failures are not hidden.
-          await sendOtp('/api/otp/email-verification', normalize(rawEmail));
+          await sendOtp(normalize(rawEmail));
         } catch (e) {
           throw toAuthError(e);
         }
@@ -226,7 +241,7 @@ export const useAuth = create<AuthState>()(
         const email = normalize(rawEmail);
         try {
           await assertNotLimited(`reset:${email}`);
-          await sendOtp('/api/otp/email-verification', email);
+          await sendOtp(email);
           await recordAttempt(`reset:${email}`, POLICIES.resetRequest);
         } catch (e) {
           throw toAuthError(e);
@@ -268,36 +283,22 @@ export const useAuth = create<AuthState>()(
         set({ user: null, hasSignedInOnDevice: true });
       },
 
-      requestPasswordReset: async (rawEmail) => {
+      lookupRecoveryQuestion: async (rawEmail) => {
         const email = normalize(rawEmail);
         try {
           await assertNotLimited(`reset:${email}`);
-          await sendOtp('/api/otp/password-reset', email);
+          const data = await apiRequest<{ question: string }>('/api/recovery/lookup', { method: 'POST', body: { email }, auth: false });
           await recordAttempt(`reset:${email}`, POLICIES.resetRequest);
+          return { question: data.question };
         } catch (e) {
           throw toAuthError(e);
         }
       },
 
-      verifyResetCode: async (rawEmail, code) => {
+      resetPassword: async (rawEmail, answer, password) => {
         const email = normalize(rawEmail);
         try {
-          await assertNotLimited(`otp:${email}`);
-          const { data, error } = await authClient.emailOtp.checkVerificationOtp({ email, type: 'forget-password', otp: code });
-          if (error || !data?.success) throw error ? fromServer(error, 'code_invalid') : new AuthError('code_invalid');
-          clearAttempts(`otp:${email}`);
-        } catch (e) {
-          const err = toAuthError(e);
-          if (err.code === 'code_invalid' || err.code === 'code_locked') await recordAttempt(`otp:${email}`, POLICIES.otpVerify);
-          throw err;
-        }
-      },
-
-      resetPassword: async (rawEmail, code, password) => {
-        const email = normalize(rawEmail);
-        try {
-          const { error } = await authClient.emailOtp.resetPassword({ email, otp: code, password });
-          if (error) throw fromServer(error);
+          await apiRequest('/api/recovery/reset', { method: 'POST', body: { email, answer, password }, auth: false });
           clearAttempts(`login:${email}`);
         } catch (e) {
           throw toAuthError(e);

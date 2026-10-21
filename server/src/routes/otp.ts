@@ -18,14 +18,13 @@ import type { AppEnv } from '../app.js';
 
 const bodySchema = z.object({ email: emailAddress });
 
-async function issueAndSend(email: string, type: 'email-verification' | 'forget-password') {
-  await db.delete(verification).where(eq(verification.identifier, `${type}-otp-${email}`));
-  const otp = await auth.api.createVerificationOTP({ body: { email, type } });
+async function issueAndSend(email: string) {
+  await db.delete(verification).where(eq(verification.identifier, `email-verification-otp-${email}`));
+  const otp = await auth.api.createVerificationOTP({ body: { email, type: 'email-verification' } });
   if (typeof otp !== 'string' || !/^\d{6}$/.test(otp)) {
     throw new ApiError(500, 'otp_failed', 'Could not create a verification code. Please try again.');
   }
-  const purpose = type === 'forget-password' ? 'reset your password' : 'verify your email address';
-  const { text, html } = codeEmail(otp, purpose);
+  const { text, html } = codeEmail(otp, 'verify your email address');
   try {
     await sendEmail({ to: email, subject: `${otp} is your LoveNest code`, text, html });
   } catch (e) {
@@ -39,13 +38,6 @@ export const otpRoutes = new Hono<AppEnv>()
     const { email } = await parseBody(c, bodySchema);
     const [row] = await db.select({ id: user.id, emailVerified: user.emailVerified }).from(user).where(eq(user.email, email));
     // Same response whether or not the account exists, so we never reveal who is registered.
-    if (row && !row.emailVerified) await issueAndSend(email, 'email-verification');
-    return c.json({ ok: true, delivery: emailDeliveryMode() });
-  })
-
-  .post('/password-reset', rateLimit('otp-reset-send', { max: 3, windowMs: 15 * 60_000 }), async (c) => {
-    const { email } = await parseBody(c, bodySchema);
-    const [row] = await db.select({ id: user.id }).from(user).where(eq(user.email, email));
-    if (row) await issueAndSend(email, 'forget-password');
+    if (row && !row.emailVerified) await issueAndSend(email);
     return c.json({ ok: true, delivery: emailDeliveryMode() });
   });
