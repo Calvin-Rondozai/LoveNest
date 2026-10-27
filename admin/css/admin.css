@@ -459,6 +459,7 @@ html[data-bs-theme="dark"] .form-select {
   border: 1px solid var(--ln-separator);
 }
 .thumb { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 8px; object-fit: cover; }
+.proof { display: block; width: 100%; max-width: 280px; margin-top: 12px; border-radius: 12px; }
 .thumb-placeholder { display: inline-flex; align-items: center; justify-content: center; color: var(--ln-label-3); font-size: 1.3rem; border: 1px solid var(--ln-separator); }
 
 /* ---------- Products ---------- */

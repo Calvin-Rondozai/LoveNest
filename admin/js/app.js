@@ -13,7 +13,7 @@
     products: [],
     orders: [],
     orderQuery: '',
-    orderFilter: 'active',
+    orderFilter: 'verify',
     openOrderId: null,
     productQuery: '',
     productCategory: 'all',
@@ -350,7 +350,12 @@
     var openOrders = state.orders.filter(function (o) { return !flow.isFinal(o.status); });
     $('#stat-open-orders').textContent = openOrders.length;
     // Oldest first: the order waiting longest needs attention first.
-    var toHandle = openOrders.slice().sort(function (a, b) { return new Date(a.placedAt) - new Date(b.placedAt); }).slice(0, 5);
+    var toHandle = openOrders.slice().sort(function (a, b) {
+      var av = a.paymentStatus === 'pending_verification' ? 0 : 1;
+      var bv = b.paymentStatus === 'pending_verification' ? 0 : 1;
+      if (av !== bv) return av - bv;
+      return new Date(a.placedAt) - new Date(b.placedAt);
+    }).slice(0, 5);
     $('#open-orders-list').innerHTML = toHandle.length ? toHandle.map(function (o) {
       var info = flow.INFO[o.status];
       return '<li class="row-link" tabindex="0" role="button" data-action="open-order" data-id="' + esc(o.id) + '">' +
@@ -387,6 +392,7 @@
 
   function paymentLabel(o) {
     if (o.status === 'cancelled' && o.paymentStatus === 'paid') return '<span class="status refund-flag"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i>Refund due</span>';
+    if (o.paymentStatus === 'pending_verification') return '<span class="status status-warn"><i class="bi bi-camera" aria-hidden="true"></i>Pending verification</span>';
     if (o.paymentStatus === 'paid') return '<span class="status status-ok"><i class="bi bi-check-circle" aria-hidden="true"></i>Paid</span>';
     if (o.paymentStatus === 'failed') return '<span class="status status-warn"><i class="bi bi-x-octagon" aria-hidden="true"></i>Payment failed</span>';
     if (o.paymentStatus === 'refunded') return '<span class="status status-off"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>Refunded</span>';
@@ -411,6 +417,7 @@
   function renderOrders() {
     var q = state.orderQuery.trim().toLowerCase();
     var list = state.orders.filter(function (o) {
+      if (state.orderFilter === 'verify' && o.paymentStatus !== 'pending_verification') return false;
       if (state.orderFilter === 'active' && flow.isFinal(o.status)) return false;
       if (state.orderFilter === 'delivered' && o.status !== 'delivered') return false;
       if (state.orderFilter === 'cancelled' && o.status !== 'cancelled') return false;
@@ -456,15 +463,29 @@
 
     $('#order-modal-title').textContent = 'Order ' + o.orderNumber;
 
-    var update = flow.isFinal(o.status)
-      ? '<p class="final-note"><i class="bi bi-lock" aria-hidden="true"></i>This order is ' + esc(info.label.toLowerCase()) + ' and can no longer be updated.</p>'
-      : '<div class="grouped-fields"><label for="order-note" class="visually-hidden">Message to the customer</label>' +
+    var update;
+    if (flow.isFinal(o.status)) {
+      update = '<p class="final-note"><i class="bi bi-lock" aria-hidden="true"></i>This order is ' + esc(info.label.toLowerCase()) + ' and can no longer be updated.</p>';
+    } else if (o.paymentStatus === 'pending_verification') {
+      update = '<p class="group-footnote">Check the screenshot against EcoCash, then approve if the money arrived.</p>' +
+        '<div class="update-actions">' +
+          '<button type="button" class="btn btn-primary btn-lg" data-action="approve-payment" data-id="' + esc(o.id) + '"><i class="bi bi-check2-circle" aria-hidden="true"></i>Approve payment</button>' +
+          '<button type="button" class="btn btn-plain btn-destructive" data-action="cancel-order" data-id="' + esc(o.id) + '"><i class="bi bi-x-circle" aria-hidden="true"></i>Cancel Order</button>' +
+        '</div>';
+    } else if (o.paymentStatus !== 'paid') {
+      update = '<p class="group-footnote">Waiting for the customer to send EcoCash and upload a screenshot.</p>' +
+        '<div class="update-actions">' +
+          '<button type="button" class="btn btn-plain btn-destructive" data-action="cancel-order" data-id="' + esc(o.id) + '"><i class="bi bi-x-circle" aria-hidden="true"></i>Cancel Order</button>' +
+        '</div>';
+    } else {
+      update = '<div class="grouped-fields"><label for="order-note" class="visually-hidden">Message to the customer</label>' +
           '<textarea id="order-note" class="field-input field-textarea" rows="2" maxlength="200" placeholder="Optional message to the customer, for example: Driver Blessing is on the way."></textarea></div>' +
         '<p class="group-footnote">The customer sees the new step and this message in the app.</p>' +
         '<div class="update-actions">' +
           '<button type="button" class="btn btn-primary btn-lg" data-action="advance-order" data-id="' + esc(o.id) + '"><i class="bi ' + flow.INFO[next].icon + '" aria-hidden="true"></i>' + esc(flow.INFO[next].action) + '</button>' +
           '<button type="button" class="btn btn-plain btn-destructive" data-action="cancel-order" data-id="' + esc(o.id) + '"><i class="bi bi-x-circle" aria-hidden="true"></i>Cancel Order</button>' +
         '</div>';
+    }
 
     var items = o.items.map(function (i) {
       return '<div class="detail-line"><span>' + esc(i.name) + ' <span class="muted">x' + i.quantity + '</span></span><span class="num">' + money(i.price * i.quantity) + '</span></div>';
@@ -506,7 +527,9 @@
         '<div class="detail-line detail-total"><span>Total</span><span class="num">' + money(o.total) + '</span></div>' +
       '</div>' +
       '<p class="group-label">Payment</p>' +
-      '<div class="detail-card"><div class="detail-line"><span>' + esc(PAYMENT_METHOD[o.paymentMethod]) + '</span>' + paymentLabel(o) + '</div></div>' +
+      '<div class="detail-card"><div class="detail-line"><span>' + esc(PAYMENT_METHOD[o.paymentMethod]) + '</span>' + paymentLabel(o) + '</div>' +
+        (o.paymentProof ? '<a href="' + esc(o.paymentProof) + '" target="_blank" rel="noopener"><img class="proof" src="' + esc(o.paymentProof) + '" alt="EcoCash screenshot"></a>' : '') +
+      '</div>' +
       '<p class="group-label">History</p>' +
       '<div class="detail-card"><ul class="history">' + history + '</ul></div>';
   }
@@ -976,6 +999,22 @@
 
     try {
       if (action === 'open-order') openOrder(id);
+
+      if (action === 'approve-payment') {
+        setBusy(target, true, 'Approving…');
+        try {
+          await api.approvePayment(id);
+          state.orders = await api.listOrders();
+          render();
+          renderOrderSheet();
+          orderModalEl.focus();
+          notify('Payment approved. Order is confirmed.');
+        } catch (err) {
+          handleError(err);
+          if (document.body.contains(target)) setBusy(target, false);
+        }
+        return;
+      }
 
       if (action === 'advance-order') {
         var current = state.orders.find(function (o) { return o.id === id; });

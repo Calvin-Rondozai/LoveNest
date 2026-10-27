@@ -9,6 +9,7 @@ import { Button } from '../../components/Button';
 import { ConsentCheckbox, InlineLink } from '../../components/ConsentCheckbox';
 import { PasswordChecklist } from '../../components/PasswordChecklist';
 import { useAuth, AuthError } from '../../store/auth';
+import { useToast } from '../../store/toast';
 import { useLockout, formatWait } from '../../utils/rateLimit';
 import { nameError, emailError, passwordError, confirmError, securityAnswerError, compactErrors, LIMITS } from '../../utils/validation';
 import { phoneError, isPhoneValid } from '../../utils/phone';
@@ -34,6 +35,7 @@ export const SignUpScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { colors } = useTheme();
   const signUp = useAuth((s) => s.signUp);
+  const showToast = useToast((s) => s.show);
   const { locked, remaining, lock } = useLockout('signup:device');
 
   const [name, setName] = useState('');
@@ -74,6 +76,9 @@ export const SignUpScreen = () => {
     setLoading(true);
     try {
       await signUp(name, email, phone, password, LEGAL_VERSION, questionId, answer);
+      showToast('Account created. Please log in.');
+      navigation.navigate('Login', { email: email.trim().toLowerCase() });
+      setLoading(false);
     } catch (e) {
       handleError(e);
     }

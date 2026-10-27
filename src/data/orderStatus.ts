@@ -17,7 +17,7 @@ export const STATUS_INFO: Record<OrderStatus, { label: string; icon: string; cus
 
 export const isFinal = (status: OrderStatus) => status === 'delivered' || status === 'cancelled';
 
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type PaymentStatus = 'pending' | 'pending_verification' | 'paid' | 'failed' | 'refunded';
 
 type StatusView = { status: OrderStatus; paymentStatus: PaymentStatus };
 
@@ -32,7 +32,14 @@ export const customerStatus = (order: StatusView) => {
     return {
       label: 'Awaiting payment',
       icon: 'time-outline',
-      customerMessage: 'Approve the EcoCash PIN on your phone to complete this order. It is not placed until we receive payment.',
+      customerMessage: 'Send the EcoCash amount shown, then upload a screenshot of the confirmation.',
+    };
+  }
+  if (order.status === 'placed' && order.paymentStatus === 'pending_verification') {
+    return {
+      label: 'Payment pending verification',
+      icon: 'time-outline',
+      customerMessage: 'We received your screenshot and are checking that the EcoCash payment arrived.',
     };
   }
   if (order.status === 'placed' && order.paymentStatus === 'failed') {

@@ -37,7 +37,13 @@
         }
       ],
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LoveNest uses your photos so you can upload an EcoCash payment screenshot."
+        }
+      ]
     ],
     "scheme": "lovenest"
   }

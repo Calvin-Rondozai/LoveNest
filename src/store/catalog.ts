@@ -12,6 +12,7 @@ type CatalogState = {
   categories: Category[];
   products: Product[];
   deliveryFee: number;
+  ecocashMerchant: string | null;
   /** True once the live catalog has loaded at least once. Bundled items cannot be bought. */
   synced: boolean;
   loading: boolean;
@@ -28,6 +29,7 @@ export const useCatalog = create<CatalogState>()(
       categories: bundledCategories,
       products: bundledProducts,
       deliveryFee: bundledFee,
+      ecocashMerchant: null,
       synced: false,
       loading: false,
       error: null,
@@ -39,7 +41,7 @@ export const useCatalog = create<CatalogState>()(
         set({ loading: true, error: null });
         try {
           const [config, cats, prods] = await Promise.all([
-            apiRequest<{ deliveryFeeCents: number }>('/api/config', { auth: false }),
+            apiRequest<{ deliveryFeeCents: number; ecocashMerchant?: string | null }>('/api/config', { auth: false }),
             apiRequest<{ categories: Category[] }>('/api/categories', { auth: false }),
             apiRequest<{ products: ApiProduct[] }>('/api/products', { auth: false }),
           ]);
@@ -54,7 +56,15 @@ export const useCatalog = create<CatalogState>()(
             inStock: p.inStock,
             stock: p.stock,
           }));
-          set({ categories: cats.categories, products, deliveryFee: config.deliveryFeeCents / 100, synced: true, loadedAt: Date.now(), loading: false });
+          set({
+            categories: cats.categories,
+            products,
+            deliveryFee: config.deliveryFeeCents / 100,
+            ecocashMerchant: config.ecocashMerchant ?? null,
+            synced: true,
+            loadedAt: Date.now(),
+            loading: false,
+          });
           // Drop cart lines for products that no longer exist (or are bundled placeholders).
           useCart.getState().prune(new Set(products.map((p) => p.id)));
         } catch (e) {
@@ -65,7 +75,14 @@ export const useCatalog = create<CatalogState>()(
     {
       name: 'lovenest.catalog',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (s) => ({ categories: s.categories, products: s.products, deliveryFee: s.deliveryFee, synced: s.synced, loadedAt: s.loadedAt }),
+      partialize: (s) => ({
+        categories: s.categories,
+        products: s.products,
+        deliveryFee: s.deliveryFee,
+        ecocashMerchant: s.ecocashMerchant,
+        synced: s.synced,
+        loadedAt: s.loadedAt,
+      }),
     },
   ),
 );

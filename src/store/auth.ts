@@ -119,10 +119,12 @@ type AuthState = {
   user: User | null;
   /** True after a successful sign-in on this device. Survives logout so Login is the return screen. */
   hasSignedInOnDevice: boolean;
+  /** Email to pre-fill on Login after Create Account. Not persisted. */
+  signupEmail: string | null;
   /** Re-checks the stored session with the server at startup. */
   restoreSession: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  /** Creates the account and signs the user in. */
+  /** Creates the account, then returns to Login (no session). */
   signUp: (
     name: string,
     email: string,
@@ -152,6 +154,7 @@ export const useAuth = create<AuthState>()(
     (set, get) => ({
       user: null,
       hasSignedInOnDevice: false,
+      signupEmail: null,
 
       restoreSession: async () => {
         if (!get().user) return;
@@ -193,7 +196,7 @@ export const useAuth = create<AuthState>()(
           await assertNotLimited(`signup:${DEVICE}`);
           const email = normalize(rawEmail);
           const phone = toE164(rawPhone) ?? rawPhone.trim();
-          const { data, error } = await authClient.signUp.email({
+          const { error } = await authClient.signUp.email({
             email,
             password,
             name: sanitize(rawName),
@@ -204,13 +207,12 @@ export const useAuth = create<AuthState>()(
           } as Parameters<typeof authClient.signUp.email>[0] & { securityQuestion: string; securityAnswer: string });
           if (error) throw fromServer(error);
           await recordAttempt(`signup:${DEVICE}`, POLICIES.signUp);
-          if (data?.user) {
-            set({ user: toUser(data.user as ServerUser), hasSignedInOnDevice: true });
-            return;
+          try {
+            await authClient.signOut();
+          } catch {
+            // Session cookie is unused until they log in.
           }
-          const signedIn = await authClient.signIn.email({ email, password });
-          if (signedIn.error || !signedIn.data) throw fromServer(signedIn.error, 'invalid_credentials');
-          set({ user: toUser(signedIn.data.user as ServerUser), hasSignedInOnDevice: true });
+          set({ user: null, hasSignedInOnDevice: true, signupEmail: email });
         } catch (e) {
           throw toAuthError(e);
         }

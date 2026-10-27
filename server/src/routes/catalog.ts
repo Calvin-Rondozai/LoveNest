@@ -6,7 +6,7 @@ import { notFound } from '../lib/errors.js';
 import { categoryDto, productDto } from '../services/serializers.js';
 import { env } from '../env.js';
 import { DELIVERY_FEE_RULES } from '../lib/delivery-fee.js';
-import { paynowMode } from '../lib/paynow.js';
+import { merchantLocal } from '../lib/ecocash.js';
 import type { AppEnv } from '../app.js';
 
 /** Public catalog for the app. Hidden products are never returned here. */
@@ -14,7 +14,8 @@ export const catalogRoutes = new Hono<AppEnv>()
   .get('/config', (c) =>
     c.json({
       legalVersion: env.LEGAL_VERSION,
-      payments: paynowMode,
+      payments: 'ecocash',
+      ecocashMerchant: merchantLocal(env.ECOCASH_MERCHANT_NUMBER),
       mobileMoney: ['ecocash'],
       deliveryFee: DELIVERY_FEE_RULES,
       // Kept for older app builds: fee for a cart under the threshold.

@@ -1,64 +1,40 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, ActivityIndicator, ScrollView, Pressable, Alert, StyleSheet } from 'react-native';
+import { View, Text, Image, ScrollView, Pressable, Alert, StyleSheet } from 'react-native';
 import { useNavigation, useRoute, RouteProp, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { Icon } from '../components/Icon';
 import { Button } from '../components/Button';
-import { FormField } from '../components/FormField';
 import { KeyboardSafe } from '../components/KeyboardSafe';
 import { useOrders } from '../store/orders';
+import { useCatalog } from '../store/catalog';
 import { useToast } from '../store/toast';
 import { ApiRequestError } from '../lib/api';
-import { toE164 } from '../utils/phone';
-import { formatLocal, mobileMoneyError, MOBILE_MONEY_LABEL } from '../utils/mobileMoney';
+import { formatMerchant, openEcoCashUssd } from '../utils/ecocash';
 import { useTheme } from '../context/ThemeContext';
-import { font, spacing, primary, success, danger } from '../theme';
+import { font, radii, spacing, primary } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 
-const POLL_MS = 4000;
-const GIVE_UP_MS = 3 * 60_000;
-
-/** Waits for the customer to approve the mobile money prompt, polling the server for the result. */
+/** After EcoCash, the customer uploads a confirmation screenshot. */
 export const PaymentPendingScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { orderId, method, phone } = useRoute<RouteProp<RootStackParamList, 'PaymentPending'>>().params;
+  const { orderId } = useRoute<RouteProp<RootStackParamList, 'PaymentPending'>>().params;
   const { colors } = useTheme();
   const order = useOrders((s) => s.orders.find((o) => o.id === orderId));
   const checkPayment = useOrders((s) => s.checkPayment);
-  const retryPayment = useOrders((s) => s.retryPayment);
+  const uploadProof = useOrders((s) => s.uploadProof);
   const cancelOrder = useOrders((s) => s.cancelOrder);
+  const merchant = useCatalog((s) => s.ecocashMerchant);
   const showToast = useToast((s) => s.show);
 
-  const [startedAt, setStartedAt] = useState(Date.now());
-  const [timedOut, setTimedOut] = useState(false);
-  const [number, setNumber] = useState(phone ? formatLocal(phone) : '');
-  const [numberError, setNumberError] = useState<string | null>(null);
+  const [localUri, setLocalUri] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const mounted = useRef(true);
   useEffect(() => () => void (mounted.current = false), []);
 
   const status = order?.paymentStatus ?? 'pending';
-  const waiting = status === 'pending' && !timedOut;
 
-  // Poll while waiting for approval.
-  useEffect(() => {
-    if (status !== 'pending' || timedOut) return;
-    const id = setInterval(async () => {
-      if (Date.now() - startedAt > GIVE_UP_MS) {
-        setTimedOut(true);
-        return;
-      }
-      try {
-        await checkPayment(orderId);
-      } catch {
-        // Keep waiting; a temporary network error is not a failed payment.
-      }
-    }, POLL_MS);
-    return () => clearInterval(id);
-  }, [status, timedOut, startedAt, orderId, checkPayment]);
-
-  // Paid: show the success screen.
   useEffect(() => {
     if (status === 'paid' && order) {
       navigation.reset({ index: 0, routes: [{ name: 'OrderSuccess', params: { orderNumber: order.orderNumber } }] });
@@ -68,28 +44,35 @@ export const PaymentPendingScreen = () => {
   const goToOrders = () =>
     navigation.dispatch(CommonActions.reset({ index: 0, routes: [{ name: 'Tabs', params: { screen: 'Orders' } }] }));
 
-  const tryAgain = async () => {
-    const problem = mobileMoneyError(number);
-    setNumberError(problem);
-    if (problem) return;
-    setBusy(true);
-    try {
-      await retryPayment(orderId, method, toE164(number) ?? number);
-      setTimedOut(false);
-      setStartedAt(Date.now());
-    } catch (e) {
-      showToast(e instanceof ApiRequestError ? e.message : 'Could not start the payment. Please try again.', 4000);
-    } finally {
-      if (mounted.current) setBusy(false);
-    }
+  const dial = async () => {
+    if (!merchant || !order) return;
+    await openEcoCashUssd(merchant, Math.round(order.total * 100));
   };
 
-  const checkNow = async () => {
+  const pick = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      showToast('Allow photo access to upload the EcoCash screenshot.', 4000);
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.5,
+    });
+    if (!result.canceled && result.assets[0]?.uri) setLocalUri(result.assets[0].uri);
+  };
+
+  const submit = async () => {
+    if (!localUri) {
+      showToast('Choose a screenshot of the EcoCash confirmation first.', 4000);
+      return;
+    }
     setBusy(true);
     try {
-      await checkPayment(orderId);
+      await uploadProof(orderId, localUri);
+      showToast('Screenshot sent. We will confirm the payment shortly.', 3000);
     } catch (e) {
-      showToast(e instanceof ApiRequestError ? e.message : 'Could not check the payment.', 4000);
+      showToast(e instanceof ApiRequestError ? e.message : 'Could not upload the screenshot.', 4000);
     } finally {
       if (mounted.current) setBusy(false);
     }
@@ -113,74 +96,55 @@ export const PaymentPendingScreen = () => {
       },
     ]);
 
-  const failed = status === 'failed';
-  const label = MOBILE_MONEY_LABEL[method];
+  const waiting = status === 'pending_verification';
+  const amount = order ? `US$${order.total.toFixed(2)}` : '';
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: colors.bg }]}>
       <KeyboardSafe>
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
-        <Icon
-          name={failed ? 'close-circle-outline' : timedOut ? 'time-outline' : 'phone-portrait-outline'}
-          size={64}
-          color={failed ? danger : timedOut ? colors.textMuted : primary}
-        />
-        <Text style={[styles.title, { color: colors.text }]}>
-          {failed ? 'Payment not completed' : timedOut ? 'Still waiting for payment' : 'Approve with your EcoCash PIN'}
-        </Text>
-        <Text style={[styles.message, { color: colors.textMuted }]}>
-          {failed
-            ? order?.paymentError || 'The payment was cancelled or declined.'
-            : timedOut
-              ? 'We have not received confirmation yet. If you already entered your EcoCash PIN, tap Check Again.'
-              : `Check the phone ${phone ? formatLocal(phone) : ''}. EcoCash should show a PIN prompt (or USSD dial) for${order ? ` US$${order.total.toFixed(2)}` : ' this order'}. Enter your PIN there to pay. That prompt comes from EcoCash, not from inside this app.`}
-        </Text>
-
-        {waiting ? (
-          <View style={styles.waitingRow}>
-            <ActivityIndicator color={primary} />
-            <Text style={[styles.waitingText, { color: colors.textMuted }]}>Waiting for confirmation…</Text>
-          </View>
-        ) : null}
-
-        {order ? (
-          <Text style={[styles.orderRef, { color: colors.textMuted }]}>
-            Order {order.orderNumber}
-            {status === 'paid' ? (
-              <Text style={{ color: success }}> · Paid</Text>
-            ) : null}
+        <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          <Icon name={waiting ? 'time-outline' : 'image-outline'} size={56} color={primary} />
+          <Text style={[styles.title, { color: colors.text }]}>
+            {waiting ? 'Payment pending verification' : 'Upload your EcoCash screenshot'}
           </Text>
-        ) : null}
+          <Text style={[styles.message, { color: colors.textMuted }]}>
+            {waiting
+              ? 'We have your screenshot. The shop will confirm the money arrived, then your order is placed.'
+              : 'Send the amount to the EcoCash number below. Then upload a screenshot of the confirmation message.'}
+          </Text>
 
-        {failed ? (
-          <View style={styles.retry}>
-            <FormField
-              label={`${label} number`}
-              icon="call-outline"
-              value={number}
-              onChangeText={(v) => {
-                setNumber(v);
-                if (numberError) setNumberError(null);
-              }}
-              keyboardType="phone-pad"
-              maxLength={16}
-              error={numberError}
-            />
-            <Button label={busy ? 'Sending prompt…' : 'Try Again'} onPress={tryAgain} disabled={busy} />
-          </View>
-        ) : null}
+          {order && merchant ? (
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.meta, { color: colors.textMuted }]}>Send to</Text>
+              <Text style={[styles.value, { color: colors.text }]}>{formatMerchant(merchant)}</Text>
+              <Text style={[styles.meta, { color: colors.textMuted }]}>Amount</Text>
+              <Text style={[styles.value, { color: colors.text }]}>{amount}</Text>
+              <Text style={[styles.meta, { color: colors.textMuted }]}>Reference</Text>
+              <Text style={[styles.value, { color: colors.text }]}>{order.orderNumber}</Text>
+            </View>
+          ) : null}
 
-        {timedOut && !failed ? <Button label={busy ? 'Checking…' : 'Check Again'} icon="refresh" onPress={checkNow} disabled={busy} style={styles.wide} /> : null}
-      </ScrollView>
+          {localUri ? <Image source={{ uri: localUri }} style={styles.preview} resizeMode="cover" /> : null}
 
-      <View style={styles.footer}>
-        <Button label="View My Orders" variant="outline" icon="" onPress={goToOrders} />
-        {order && order.status === 'placed' && status !== 'paid' ? (
-          <Pressable onPress={confirmCancel} hitSlop={8} style={styles.cancel}>
-            <Text style={styles.cancelText}>Cancel Order</Text>
-          </Pressable>
-        ) : null}
-      </View>
+          {waiting ? (
+            <Button label="Check status" icon="refresh" variant="outline" onPress={() => checkPayment(orderId)} style={styles.wide} />
+          ) : (
+            <>
+              <Button label="Open EcoCash again" icon="call-outline" variant="outline" onPress={dial} style={styles.wide} />
+              <Button label={localUri ? 'Choose a different screenshot' : 'Choose screenshot'} icon="image-outline" variant="outline" onPress={pick} style={styles.wide} />
+              <Button label={busy ? 'Uploading…' : 'Submit screenshot'} onPress={submit} disabled={busy || !localUri} style={styles.wide} />
+            </>
+          )}
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Button label="View My Orders" variant="outline" icon="" onPress={goToOrders} />
+          {order && order.status === 'placed' && status !== 'paid' ? (
+            <Pressable onPress={confirmCancel} hitSlop={8} style={styles.cancel}>
+              <Text style={styles.cancelText}>Cancel Order</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </KeyboardSafe>
     </SafeAreaView>
   );
@@ -188,14 +152,14 @@ export const PaymentPendingScreen = () => {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  body: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.lg, gap: spacing.sm },
+  body: { flexGrow: 1, alignItems: 'center', padding: spacing.lg, gap: spacing.sm },
   title: { fontSize: font.size.xl, fontFamily: font.sansBold, textAlign: 'center', marginTop: spacing.md },
   message: { fontSize: font.size.sm, fontFamily: font.sans, textAlign: 'center', lineHeight: 21 },
-  waitingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.md },
-  waitingText: { fontSize: font.size.sm, fontFamily: font.sansMedium },
-  orderRef: { fontSize: font.size.xs, fontFamily: font.sansSemi, marginTop: spacing.sm },
-  retry: { alignSelf: 'stretch', marginTop: spacing.lg },
-  wide: { alignSelf: 'stretch', marginTop: spacing.lg },
+  card: { alignSelf: 'stretch', borderWidth: 1, borderRadius: radii.md, padding: spacing.md, marginTop: spacing.md },
+  meta: { fontSize: font.size.xs, fontFamily: font.sansMedium, marginTop: spacing.sm },
+  value: { fontSize: font.size.md, fontFamily: font.sansBold },
+  preview: { width: '100%', height: 220, borderRadius: radii.md, marginTop: spacing.md },
+  wide: { alignSelf: 'stretch', marginTop: spacing.sm },
   footer: { paddingHorizontal: spacing.md, paddingBottom: spacing.md, gap: spacing.sm },
   cancel: { alignSelf: 'center', paddingVertical: spacing.sm },
   cancelText: { color: primary, fontFamily: font.sansBold, fontSize: font.size.md },

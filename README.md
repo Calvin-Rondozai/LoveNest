@@ -17,11 +17,11 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 **Shopping**
 - Home dashboard with a search bar, a hero banner and category shortcuts. Search and **Shop Now** open the market.
 - Market (Categories tab) with an **All** view by default, category filters, and search across product names, descriptions and categories.
-- Product details, cart, and a 4-step checkout: **Cart → Delivery → Confirm → Payment**. Delivery is Mutare only; recipient name and phone are pre-filled from the account and can be edited on Confirm. Payment is EcoCash (PIN prompt on the customer's phone). Delivery fee is US$5 under US$50 subtotal, US$10 at US$50+.
-- **Order tracking**: My Orders shows each order's status and a progress bar; Order Details shows a step-by-step timeline (Order placed, Confirmed, Being prepared, Out for delivery, Delivered, or Cancelled), notes from the shop, items, delivery details and payment status. An order is only marked **Order placed** after EcoCash payment succeeds; unpaid or failed payments show Awaiting payment or Payment failed. Status changes arrive as in-app notifications. Pull down to refresh.
+- Product details, cart, and a 4-step checkout: **Cart → Delivery → Confirm → Payment**. Delivery is Mutare only; recipient name and phone are pre-filled from the account and can be edited on Confirm. Payment is EcoCash: the app opens send-money USSD, then you upload a confirmation screenshot. Delivery fee is US$5 under US$50 subtotal, US$10 at US$50+.
+- **Order tracking**: My Orders shows each order's status and a progress bar; Order Details shows a step-by-step timeline (Order placed, Confirmed, Being prepared, Out for delivery, Delivered, or Cancelled), notes from the shop, items, delivery details and payment status. After you upload a screenshot the order shows Payment pending verification until an admin confirms the money arrived. Status changes arrive as in-app notifications. Pull down to refresh.
 
 **Accounts**
-- Email/password sign-up and login. Sign-up collects name, email, phone, password and a **security question**, then signs you in. After the first sign-in, the app stays signed in until you log out, delete the app, or delete the account. New users land on Create Account; Login is shown after logout.
+- Email/password sign-up and login. Sign-up collects name, email, phone, password and a **security question**, then opens Login. After the first sign-in, the app stays signed in until you log out, delete the app, or delete the account. New users land on Create Account; Login is shown after logout.
 - Forgot password uses the **security question** chosen at sign-up. Older accounts without a question contact LoveNest on WhatsApp.
 - Signing up requires accepting the Terms and Privacy Policy and confirming age 18+. The accepted version is recorded.
 - Profile: **Edit My Details** (name and phone) and **Change Password**.
@@ -41,7 +41,7 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 **Admin dashboard** (`admin/`)
 - Separate web dashboard in HTML, CSS, JavaScript and Bootstrap 5, designed to Apple's Human Interface Guidelines.
 - **Overview**: open orders, customers, new sign-ups and products, an "Orders to handle" list (oldest first), recent sign-ups and products.
-- **Orders**: search by order number, customer or recipient; filter Active, Delivered, Cancelled or All. Open an order to see the customer, recipient (tap to call), items, payment and full history, then move it to the next step with an optional message to the customer, or cancel it. Orders only move forward one step at a time; delivered and cancelled orders are locked. Cancelled paid orders are flagged "Refund due".
+- **Orders**: search by order number, customer or recipient; filter To verify, Active, Delivered, Cancelled or All. To verify shows EcoCash screenshots waiting for approval. Open an order to see the customer, recipient (tap to call), items, payment screenshot and full history, then approve payment, move it to the next step with an optional message, or cancel it. Orders only move forward one step at a time; delivered and cancelled orders are locked. Cancelled paid orders are flagged "Refund due".
 - **Products**: search, filter by category, add and edit with photo upload (images are resized and compressed in the browser), hide or show in the app, delete. Add or delete shop categories (a category can be deleted only when it has no products).
 - **Users**: search, filter by role, create (with a generated temporary password), edit name, role and status, suspend or reactivate, delete. You can't delete or demote yourself or the last admin.
 - Sidebar on wide screens and a floating tab bar on phones; follows light and dark mode; 44pt tap targets; confirmation only for deletes that can't be undone.
@@ -93,9 +93,9 @@ The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 ### Trying it in development
 
-- **Sign-up**: create an account and you are signed in straight away.
+- **Sign-up**: create an account, then sign in on the Login screen.
 - **Password reset**: Forgot password, enter your email, answer the security question you chose at sign-up, then set a new password.
-- **Mobile money**: without Paynow keys the server simulates Paynow (no real EcoCash PIN popup). Pay with `0771111111` to succeed, `0773333333` to cancel or `0774444444` for insufficient balance. With live Paynow keys, EcoCash shows the PIN prompt on the customer's phone.
+- **Mobile money**: Pay opens EcoCash USSD (`*153*1*1*` plus the shop number and amount). Upload a screenshot of the confirmation. In the admin dashboard, **To verify** lists those orders so you can approve payment.
 - **Onboarding again**: clear the app's storage, or reinstall.
 
 ## Scripts
@@ -118,7 +118,7 @@ src/
     legal/                  Legal document viewer, Delete account
   components/               Shared UI: Button, FormField, SelectField, OtpInput, SearchBar, AuthLayout…
   store/                    Zustand stores: auth, cart, checkout, orders, notifications, onboarding, toast
-  utils/                    validation, rateLimit, phone, whatsapp
+  utils/                    validation, rateLimit, phone, whatsapp, EcoCash USSD
   legal/content.ts          Single source of truth for the Privacy Policy, Terms and Refund Policy
   data/catalog.ts           Categories and products (static for now)
   data/orderStatus.ts       Order steps shared with admin/js/orderStatus.js and the server
@@ -158,13 +158,13 @@ Typography: **Poppins** for UI and **Pacifico** for script accents. The app icon
 | Product photos | **Cloudinary** (25 free credits a month, automatic resizing for mobile) |
 | Server (login, payments, admin API) | **Render** free web service, kept awake by an **UptimeRobot** ping |
 | Login | **Better Auth** on that server: email and password, phone on the account, security-question password reset |
-| Payments | **Paynow** (EcoCash). The integration key stays on the server; orders are only marked paid after the server confirms with Paynow |
+| Payments | **EcoCash** send-money USSD plus a confirmation screenshot. An admin marks the order paid after checking EcoCash. |
 
 Not chosen: Supabase (free projects pause after a week of inactivity), Vercel (free plan bans commercial use), Neon Auth (no official Expo support), and Fly.io, Railway and Koyeb (need a card). When the shop is earning, Render's paid plan (about $7 a month) removes the sleep issue.
 
 ### Status
 
-All six stages are built: accounts, products, orders and payments run on the API in [`server/`](server/README.md), and both the app and the admin dashboard use it. The server README has the step-by-step **Going live** guide (Turso, Cloudinary, Paynow, Render, UptimeRobot). Deployment is described in `render.yaml`.
+All six stages are built: accounts, products, orders and payments run on the API in [`server/`](server/README.md), and both the app and the admin dashboard use it. The server README has the step-by-step **Going live** guide (Turso, Cloudinary, EcoCash, Render, UptimeRobot). Deployment is described in `render.yaml`.
 
 The client-side checks are for user experience only. Before launch, the backend **must**:
 - own the order lifecycle: accept status changes from admins only, allow just "next step" or "cancel", and record each change with a timestamp and optional note;
@@ -193,8 +193,16 @@ The **LoveNest name, logo and brand images are not covered** by that licence and
 
 ## Changelog
 
+### 2026-10-27 (EcoCash screenshot)
+- Checkout opens EcoCash USSD (`*153*1*1*shop number*amount#`), then the customer uploads a confirmation screenshot. Screenshots are stored with product photos. Admins approve payment in the dashboard (**To verify**), which confirms the order.
+- Privacy Policy and Terms updated for EcoCash screenshots and the removal of Paynow. `LEGAL_VERSION` is 2026-10-27.
+
+### 2026-10-27 (Create Account to Login)
+- A successful Create Account opens Login so you sign in with the new email and password. Email is pre-filled. There is still no verification code.
+- Privacy Policy wording matches this sign-in step. No new data is collected (`LEGAL_VERSION` stays 2026-10-27).
+
 ### 2026-10-27 (sign in after Create Account)
-- Create Account signs you in immediately. There is no email verification code and the app no longer calls Resend for sign-up.
+- Create Account no longer emails a verification code and the app no longer calls Resend for sign-up.
 - Privacy Policy and Terms updated: no verification emails, Resend is not a processor. `LEGAL_VERSION` is 2026-10-27.
 
 ### 2026-10-27 (Create Account on Render)

@@ -12,7 +12,7 @@ const updatedAt = () =>
 
 export const ORDER_STATUSES = ['placed', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'] as const;
 export const PAYMENT_METHODS = ['ecocash'] as const;
-export const PAYMENT_STATUSES = ['pending', 'paid', 'failed', 'refunded'] as const;
+export const PAYMENT_STATUSES = ['pending', 'pending_verification', 'paid', 'failed', 'refunded'] as const;
 
 export const category = sqliteTable('category', {
   id: text('id').primaryKey(), // readable slug, e.g. "flowers"
@@ -68,10 +68,11 @@ export const order = sqliteTable(
     giftMessage: text('gift_message').notNull().default(''),
     /** Sent by the app with each checkout so a retried request never creates a second order. */
     idempotencyKey: text('idempotency_key').notNull(),
-    /** Mobile money number that approves the payment (E.164). */
     paymentPhone: text('payment_phone'),
     paymentError: text('payment_error'),
     paidAt: integer('paid_at', { mode: 'timestamp_ms' }),
+    paymentProofUrl: text('payment_proof_url'),
+    paymentProofPublicId: text('payment_proof_public_id'),
     paynowReference: text('paynow_reference'),
     paynowPollUrl: text('paynow_poll_url'),
     createdAt: createdAt(),

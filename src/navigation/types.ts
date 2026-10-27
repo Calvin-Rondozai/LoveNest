@@ -11,7 +11,7 @@ export type RootStackParamList = {
   EditProfile: undefined;
   OrderDetail: { orderNumber: string };
   PaymentPending: { orderId: string; method: 'ecocash'; phone: string };
-  Login: undefined;
+  Login: { email?: string } | undefined;
   SignUp: undefined;
   ForgotPassword: { email?: string } | undefined;
   SecurityQuestion: { email: string; question: string };

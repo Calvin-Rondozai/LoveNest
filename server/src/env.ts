@@ -37,11 +37,8 @@ const schema = z.object({
   CLOUDINARY_API_KEY: optional,
   CLOUDINARY_API_SECRET: optional,
 
-  // Stage 4: payments (Paynow).
-  PAYNOW_INTEGRATION_ID: optional,
-  PAYNOW_INTEGRATION_KEY: optional,
-  /** Paynow test mode only accepts payments initiated with the merchant account email. */
-  PAYNOW_AUTH_EMAIL: optional,
+  // EcoCash receiving number shown in the app (07XXXXXXXX).
+  ECOCASH_MERCHANT_NUMBER: z.string().default('0771234567'),
 
   // Seeding the first admin (npm run db:seed).
   SEED_ADMIN_EMAIL: optional,

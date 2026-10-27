@@ -8,8 +8,8 @@ The backend for the LoveNest mobile app and admin dashboard: accounts, products,
 | Web framework | Hono 4 on `@hono/node-server` |
 | Auth | Better Auth 1.7: email and password, phone, security-question password reset, admin roles, suspension, Expo |
 | Database | Turso (libSQL / SQLite) via Drizzle ORM; a local SQLite file in development |
-| Photos | Cloudinary |
-| Payments | Paynow (EcoCash) |
+| Photos | Cloudinary or the LoveNest database |
+| Payments | EcoCash send-money USSD plus a confirmation screenshot |
 | Hosting | Render free web service + UptimeRobot |
 
 ## What it does
@@ -18,7 +18,7 @@ The backend for the LoveNest mobile app and admin dashboard: accounts, products,
 - **Admin users API**: list, create (with a temporary password the user must change), rename, change role, suspend or reactivate (signs them out), delete. You can never remove your own admin access or the last admin.
 - **Catalog**: public categories and visible products for the app; admins create, edit, hide and delete products and upload photos (type checked by file signature, max 5 MB, stored on Cloudinary).
 - **Checkout**: prices, totals and stock come from the database only. Stock is reserved in the same transaction as the order, so the last item can't be sold twice. Every checkout carries an idempotency key, so a retry never creates a second order.
-- **Payments**: EcoCash through Paynow express checkout. An order is only marked paid after a hash-verified Paynow message with the exact amount. Delivery is Mutare only.
+- **Payments**: the app opens EcoCash send-money USSD (`*153*1*1*` plus the shop number and amount). The customer uploads a confirmation screenshot, stored with product photos. An admin checks EcoCash and approves the payment, which confirms the order. Delivery is Mutare only.
 - **Order progress**: admins move orders one step at a time (or cancel, which returns stock) with an optional note; customers see each step and note in the app.
 
 ## Run it locally
@@ -37,9 +37,7 @@ npm run dev                     # http://localhost:3000
 - Admin dashboard: http://localhost:3000/admin
 - Legal pages: http://localhost:3000/legal
 
-Without the optional keys, development still works: photos are stored in `data/uploads`, and payments use a **Paynow simulator** with Paynow's test numbers: `0771111111` pays after 5 seconds, `0772222222` after 15, `0773333333` cancels, `0774444444` fails with insufficient balance.
-
-**Production refuses to start** unless Cloudinary and Paynow are configured, so a live shop can never silently fake payments.
+Without Cloudinary keys, photos and payment screenshots are stored in the database and served at `/images/:id`. Set `ECOCASH_MERCHANT_NUMBER` to the shop EcoCash number shown in the app.
 
 ### Running the mobile app against your PC
 
@@ -54,7 +52,7 @@ Restart `npx expo start` after changing `.env`.
 | Command | What it does |
 |---|---|
 | `npm run dev` | Start with auto-reload |
-| `npm test` | 37 tests against a throwaway database (auth, checkout, stock, payments, Paynow hashes, admin rules, security) |
+| `npm test` | Tests against a throwaway database (auth, checkout, stock, EcoCash screenshot payment, admin rules, security) |
 | `npm run typecheck` | TypeScript check |
 | `npm run build` / `npm start` | Production build and start (migrations, and seeding if `SEED_ADMIN_*` is set, run on start) |
 | `npm run db:generate` | Create a migration after changing `src/db/app-schema.ts` |
@@ -81,12 +79,9 @@ Accounts do not send mail (no verification codes). Leave `RESEND_API_KEY` empty.
 1. Sign up at [cloudinary.com](https://cloudinary.com).
 2. Dashboard > API Keys: copy Cloud name, API Key and API Secret into `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET`.
 
-### 4. Paynow (payments)
+### 4. EcoCash (payments)
 
-1. Register at [paynow.co.zw](https://www.paynow.co.zw) and add your business bank account for payouts.
-2. Receive Payments > New Integration (type: "3rd Party Shopping Cart or Link"). Copy the Integration ID and Integration Key into `PAYNOW_INTEGRATION_ID` and `PAYNOW_INTEGRATION_KEY`.
-3. While the integration is in **test mode**, set `PAYNOW_AUTH_EMAIL` to your Paynow login email and use the test numbers above. Ask Paynow to set it live when you are ready, then remove `PAYNOW_AUTH_EMAIL`.
-4. Paynow posts payment results to `https://<your Render URL>/api/payments/paynow/result`; nothing to configure, the server sends this URL with each payment.
+Set `ECOCASH_MERCHANT_NUMBER` to the shop EcoCash number in local form (`07XXXXXXXX`). Customers send money with `*153*1*1*` plus that number and the order amount, then upload a screenshot. You approve it in the admin dashboard (**To verify**).
 
 ### 5. Render (hosting)
 
@@ -96,7 +91,7 @@ Accounts do not send mail (no verification codes). Leave `RESEND_API_KEY` empty.
    - `BETTER_AUTH_URL`: the service URL Render shows, e.g. `https://lovenest-api.onrender.com` (you can set it after the first deploy, then redeploy)
    - everything from steps 1 to 4 (leave Cloudinary blank if using database photos)
    - `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD`: your first admin (a strong password)
-4. Deploy. Check `https://<url>/health` shows `{"ok":true,"db":"up","payments":"live"}`.
+4. Deploy. Check `https://<url>/health` shows `"ok":true` and `"payments":"ecocash"`.
 5. Sign in at `https://<url>/admin`, then **delete `SEED_ADMIN_PASSWORD`** from Render's Environment settings.
 
 ### 6. UptimeRobot (keep the free server awake)
@@ -104,7 +99,7 @@ Accounts do not send mail (no verification codes). Leave `RESEND_API_KEY` empty.
 1. [uptimerobot.com](https://uptimerobot.com) > Add New Monitor > HTTP(s).
 2. URL `https://<your Render URL>/health`, interval 5 minutes.
 
-Render's free plan sleeps after 15 minutes without traffic; the monitor prevents that so Paynow results and customers never hit a cold server. When the shop earns, Render's paid plan removes the need for this.
+Render's free plan sleeps after 15 minutes without traffic; the monitor prevents that so customers never hit a cold server. When the shop earns, Render's paid plan removes the need for this.
 
 ### 7. Point the app and legal links at production
 
@@ -116,8 +111,8 @@ Render's free plan sleeps after 15 minutes without traffic; the monitor prevents
 
 - All settings are validated at startup; production stops if a required key is missing or `BETTER_AUTH_SECRET` is weak.
 - Passwords are hashed by Better Auth (scrypt) and never logged. Email codes are never logged in production.
-- Rate limits: Better Auth limits sign-in, sign-up, codes, password changes and account deletion in the database; checkout and payment endpoints have their own limits.
+- Rate limits: Better Auth limits sign-in, sign-up, password changes and account deletion in the database; checkout and screenshot upload have their own limits.
 - Cross-site protection: the dashboard is served from the API's own origin with `SameSite=Lax` cookies, a strict Content Security Policy, and an origin check on every state-changing request.
-- Payment safety: Paynow messages must pass SHA-512 hash verification and match the order amount; the server only polls `paynow.co.zw` URLs.
+- Payment safety: an order is only marked paid after an admin checks EcoCash and approves the screenshot. LoveNest never collects EcoCash PINs.
 - Uploads: 5 MB limit, file signature checks, re-encoded by Cloudinary.
 - Node 20 reached end of life in April 2026 and no longer gets security fixes. Everything here runs on it, but plan to move to Node 22 LTS when you can (change `NODE_VERSION` in `render.yaml` and `engines` in `package.json`).

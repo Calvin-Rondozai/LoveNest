@@ -50,10 +50,10 @@ const privacy: LegalDocument = {
       heading: '2. Information we collect',
       paragraphs: ['We only collect what we need to run the service:'],
       bullets: [
-        'Account information: your name, email address, phone number and password. Passwords are stored by our servers in hashed form and are never visible to our staff. Creating an account signs you in immediately; we do not send an email verification code.',
+        'Account information: your name, email address, phone number and password. Passwords are stored by our servers in hashed form and are never visible to our staff. After you create an account you sign in with your email and password. We do not send an email verification code.',
         'Security question: when you create an account you choose a question from a preset list and give a short answer. We store the question you chose and a hashed form of your answer. We never store the answer in readable form, and staff cannot read it.',
         'Order and delivery information: the items you order, recipient name, recipient phone number, delivery address (currently Mutare), delivery instructions and any gift message you write. Checkout may pre-fill your account name and phone as the recipient; you can change those details before paying.',
-        'Payment information: EcoCash payments and transaction references. Mobile money payments are processed by the payment provider; we never see or store your mobile money PIN. The EcoCash PIN prompt appears on your phone from EcoCash, not inside the LoveNest app.',
+        'Payment information: you send EcoCash to our shop number from your phone. We store a screenshot of your EcoCash confirmation so we can match the payment to your order. We never ask for or store your EcoCash PIN. The PIN is entered in EcoCash, not inside the LoveNest app.',
         'Support communications: messages you send us, including through WhatsApp. Tapping a WhatsApp button opens WhatsApp with a suggested message; nothing is sent until you choose to send it, and your use of WhatsApp is governed by WhatsApp’s own privacy policy.',
         'Technical and security information: when you use our services our servers may log your IP address, device type, operating system, app version, timestamps and failed sign-in attempts, to keep the service secure and prevent fraud.',
         'Information stored on your device: settings such as light/dark mode, your signed-in session, a copy of your orders and their delivery progress, in-app notifications (such as order updates) and limits on repeated sign-in attempts are stored locally on your device. Signing out keeps these settings; deleting the app removes them.',
@@ -92,8 +92,8 @@ const privacy: LegalDocument = {
       ],
       bullets: [
         'Delivery partners and couriers, who receive the recipient details needed to deliver your order.',
-        'Paynow (Zimbabwe), our payment gateway, and your mobile money operator (EcoCash), which receive your order reference, amount, payment phone number and email to process the payment.',
-        'Service providers that run LoveNest on our behalf and may only use the data for that purpose: Render (application hosting), Turso (database) and Cloudinary (product photos; no customer data).',
+        'Your mobile money operator (EcoCash) when you send payment to our EcoCash number. That transfer is between you and EcoCash.',
+        'Service providers that run LoveNest on our behalf and may only use the data for that purpose: Render (application hosting), Turso (database) and Cloudinary (product photos and payment screenshots, if Cloudinary is configured).',
         'Authorities, courts or regulators where the law requires it, or to protect the rights, property or safety of LoveNest, our customers or others.',
         'A buyer or successor if our business is sold or restructured, subject to this policy.',
       ],
@@ -101,7 +101,7 @@ const privacy: LegalDocument = {
     {
       heading: '7. International transfers',
       paragraphs: [
-        `Our hosting and database providers (Render and Turso) store or process information outside ${I.country}, in the European Union and the United States. Where this happens we take the steps required by law, including contracts with these providers, to ensure your information receives an adequate level of protection.`,
+        `Our hosting and database providers (Render and Turso) store or process information outside ${I.country}, in the European Union and the United States. If product photos or payment screenshots are stored with Cloudinary, those files are also processed outside ${I.country}. Where this happens we take the steps required by law, including contracts with these providers, to ensure your information receives an adequate level of protection.`,
       ],
     },
     {
@@ -194,7 +194,7 @@ const terms: LegalDocument = {
     {
       heading: '5. Payment',
       paragraphs: [
-        'You pay by EcoCash at checkout. You approve the payment with your EcoCash PIN on your phone when EcoCash prompts you; LoveNest never asks for that PIN inside the app. Mobile money payments are also subject to your provider\'s terms. Your order is confirmed once payment is received.',
+        'You pay by EcoCash at checkout. The app shows our EcoCash number, the amount and your order reference, then opens EcoCash so you can send the money. You then upload a screenshot of the confirmation. A LoveNest administrator checks that the money arrived before the order is confirmed. LoveNest never asks for your EcoCash PIN. Mobile money payments are also subject to EcoCash terms.',
         'Delivery fees depend on your order subtotal: US$5 when the subtotal is under US$50, and US$10 when the subtotal is US$50 or more. The fee is shown before you pay.',
       ],
     },

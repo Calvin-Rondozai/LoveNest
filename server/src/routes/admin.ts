@@ -10,7 +10,7 @@ import { ORDER_STATUSES } from '../db/app-schema.js';
 import { LIMITS, emailAddress, parseBody, password, personName, text } from '../lib/validation.js';
 import { deleteProductImage, detectImageType, ImageTooLargeError, isAllowedImageType, MAX_IMAGE_BYTES, storeProductImage } from '../lib/storage.js';
 import { productDto } from '../services/serializers.js';
-import { changeStatus, listOrders } from '../services/orders.js';
+import { approvePayment, changeStatus, listOrders } from '../services/orders.js';
 import type { AppEnv } from '../app.js';
 
 // ---------- users ----------
@@ -268,6 +268,12 @@ export const adminRoutes = new Hono<AppEnv>()
   .post('/orders/:id/status', async (c) => {
     const input = await parseBody(c, statusSchema);
     await changeStatus(c.req.param('id'), input.status, input.note, c.get('user')!.id);
+    const [full] = await listOrders({ id: c.req.param('id'), limit: 1 });
+    return c.json({ order: full });
+  })
+
+  .post('/orders/:id/approve-payment', async (c) => {
+    await approvePayment(c.req.param('id'), c.get('user')!.id);
     const [full] = await listOrders({ id: c.req.param('id'), limit: 1 });
     return c.json({ order: full });
   });

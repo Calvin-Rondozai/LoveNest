@@ -3,29 +3,26 @@ import { z } from 'zod';
 import { requireUser } from '../middleware/auth.js';
 import { rateLimit } from '../lib/rate-limit.js';
 import { badRequest } from '../lib/errors.js';
-import { LIMITS, parseBody, phoneNumber, text, zimMobileMoneyNumber } from '../lib/validation.js';
-import { createOrder, customerCancel, listOrders, loadOrder, refreshPayment, startMobilePayment } from '../services/orders.js';
+import { LIMITS, parseBody, phoneNumber, text } from '../lib/validation.js';
+import { detectImageType, ImageTooLargeError, isAllowedImageType, MAX_IMAGE_BYTES } from '../lib/storage.js';
+import { createOrder, customerCancel, listOrders, loadOrder, submitPaymentProof } from '../services/orders.js';
 import type { AppEnv } from '../app.js';
 
-const checkoutSchema = z
-  .object({
-    items: z
-      .array(z.object({ productId: z.string().min(1).max(64), quantity: z.number().int().min(1).max(20) }))
-      .min(1, 'Your cart is empty.')
-      .max(30),
-    recipientName: text.clean(2, LIMITS.name, "Recipient's name"),
-    recipientPhone: phoneNumber,
-    address: text.clean(5, LIMITS.address, 'Address'),
-    apartment: text.optionalClean(LIMITS.apartment, 'Apartment'),
-    // City is accepted for older clients but always stored as Mutare (delivery area for now).
-    city: text.optionalClean(LIMITS.city, 'City'),
-    instructions: text.optionalClean(LIMITS.instructions, 'Instructions'),
-    giftMessage: text.optionalClean(LIMITS.giftMessage, 'Gift message'),
-    paymentMethod: z.enum(['ecocash']),
-    paymentPhone: zimMobileMoneyNumber,
-  });
-
-const paySchema = z.object({ paymentMethod: z.enum(['ecocash']), paymentPhone: zimMobileMoneyNumber });
+const checkoutSchema = z.object({
+  items: z
+    .array(z.object({ productId: z.string().min(1).max(64), quantity: z.number().int().min(1).max(20) }))
+    .min(1, 'Your cart is empty.')
+    .max(30),
+  recipientName: text.clean(2, LIMITS.name, "Recipient's name"),
+  recipientPhone: phoneNumber,
+  address: text.clean(5, LIMITS.address, 'Address'),
+  apartment: text.optionalClean(LIMITS.apartment, 'Apartment'),
+  city: text.optionalClean(LIMITS.city, 'City'),
+  instructions: text.optionalClean(LIMITS.instructions, 'Instructions'),
+  giftMessage: text.optionalClean(LIMITS.giftMessage, 'Gift message'),
+  paymentMethod: z.enum(['ecocash']),
+  paymentPhone: z.string().optional(),
+});
 
 const IDEMPOTENCY_RE = /^[A-Za-z0-9_-]{16,64}$/;
 
@@ -34,7 +31,6 @@ export const orderRoutes = new Hono<AppEnv>()
   .use('*', requireUser)
   .get('/', async (c) => {
     const orders = await listOrders({ userId: c.get('user')!.id, limit: 100 });
-    // Customers never see other people's names; strip the admin-only fields.
     return c.json({ orders: orders.map(({ customerName: _n, customerEmail: _e, ...o }) => o) });
   })
   .post('/', rateLimit('checkout', { max: 10, windowMs: 10 * 60_000 }), async (c) => {
@@ -49,16 +45,25 @@ export const orderRoutes = new Hono<AppEnv>()
     const { dto } = await loadOrder({ id: c.req.param('id'), userId: c.get('user')!.id });
     return c.json({ order: dto });
   })
-  .get('/:id/payment', rateLimit('payment-status', { max: 120, windowMs: 10 * 60_000 }), async (c) => {
-    const order = await refreshPayment(c.req.param('id'), c.get('user')!.id);
-    return c.json({ order });
+  .get('/:id/payment', async (c) => {
+    const { dto } = await loadOrder({ id: c.req.param('id'), userId: c.get('user')!.id });
+    return c.json({ order: dto });
   })
-  .post('/:id/pay', rateLimit('payment-retry', { max: 5, windowMs: 10 * 60_000 }), async (c) => {
-    const input = await parseBody(c, paySchema);
-    const user = c.get('user')!;
-    const result = await startMobilePayment(c.req.param('id'), { id: user.id, email: user.email }, input.paymentPhone, input.paymentMethod);
-    const { dto } = await loadOrder({ id: c.req.param('id'), userId: user.id });
-    return c.json({ order: dto, ...result });
+  .post('/:id/proof', rateLimit('payment-proof', { max: 8, windowMs: 15 * 60_000 }), async (c) => {
+    const form = await c.req.formData();
+    const file = form.get('image');
+    if (!(file instanceof File)) throw badRequest('Attach a screenshot in the "image" field.');
+    if (file.size > MAX_IMAGE_BYTES) throw badRequest('Use a screenshot smaller than 5 MB.');
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const type = detectImageType(bytes);
+    if (!type || !isAllowedImageType(type)) throw badRequest('Choose a JPG, PNG or WebP screenshot.');
+    try {
+      const order = await submitPaymentProof(c.req.param('id'), c.get('user')!.id, bytes, type);
+      return c.json({ order });
+    } catch (e) {
+      if (e instanceof ImageTooLargeError) throw badRequest(e.message);
+      throw e;
+    }
   })
   .post('/:id/cancel', async (c) => {
     const order = await customerCancel(c.req.param('id'), c.get('user')!.id);

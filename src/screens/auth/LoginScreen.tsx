@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthLayout } from '../../components/AuthLayout';
 import { FormField } from '../../components/FormField';
@@ -17,14 +17,22 @@ type Errors = { email?: string; password?: string; form?: string };
 
 export const LoginScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'Login'>>();
   const { colors } = useTheme();
   const signIn = useAuth((s) => s.signIn);
+  const signupEmail = useAuth((s) => s.signupEmail);
   const { locked, remaining, lock } = useLockout('login:device');
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(signupEmail ?? route.params?.email ?? '');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!signupEmail) return;
+    setEmail(signupEmail);
+    useAuth.setState({ signupEmail: null });
+  }, [signupEmail]);
 
   const handleError = (e: unknown) => {
     const err = e as AuthError;

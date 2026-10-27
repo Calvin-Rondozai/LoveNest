@@ -97,17 +97,6 @@ export const phoneNumber = z.string().transform((v, ctx) => {
   return e164;
 });
 
-/** Zimbabwe mobile money numbers (EcoCash), in the local 07XXXXXXXX form Paynow expects. */
-export const zimMobileMoneyNumber = phoneNumber.transform((e164, ctx) => {
-  if (!/^\+2637[1-8]\d{7}$/.test(e164)) {
-    ctx.addIssue({ code: 'custom', message: 'Enter a Zimbabwe mobile money number, for example 0771 234 567.' });
-    return z.NEVER;
-  }
-  return e164;
-});
-
-export const localZimNumber = (e164: string) => `0${e164.slice(4)}`;
-
 export const text = { clean, optionalClean };
 
 /** Parses a JSON body with a zod schema, returning field-level errors in the standard shape. */

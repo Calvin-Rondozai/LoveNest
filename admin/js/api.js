@@ -195,7 +195,13 @@
     // ---------- orders ----------
 
     listOrders: async function () {
-      return (await request('/api/admin/orders')).orders;
+      return (await request('/api/admin/orders')).orders.map(function (o) {
+        if (o.paymentProof && o.paymentProof.charAt(0) === '/') o.paymentProof = BASE + o.paymentProof;
+        return o;
+      });
+    },
+    approvePayment: async function (id) {
+      return (await request('/api/admin/orders/' + encodeURIComponent(id) + '/approve-payment', { method: 'POST', body: {} })).order;
     },
     updateOrderStatus: async function (id, status, note) {
       return (await request('/api/admin/orders/' + encodeURIComponent(id) + '/status', {

@@ -14,11 +14,9 @@ import { db } from './db/client.js';
 import { env, isProd } from './env.js';
 import { ApiError } from './lib/errors.js';
 import { imageStorageMode, loadImage } from './lib/storage.js';
-import { paynowMode } from './lib/paynow.js';
 import { applyExpoOrigin, csrfGuard } from './middleware/auth.js';
 import { catalogRoutes } from './routes/catalog.js';
 import { orderRoutes } from './routes/orders.js';
-import { paymentRoutes } from './routes/payments.js';
 import { adminRoutes } from './routes/admin.js';
 import { recoveryRoutes } from './routes/recovery.js';
 import { emailDeliveryMode } from './lib/email.js';
@@ -61,8 +59,8 @@ app.use(
   }),
 );
 
-// Small JSON bodies everywhere, except product photo uploads.
-const PHOTO_UPLOAD = /^\/api\/admin\/products\/[^/]+\/image$/;
+// Small JSON bodies everywhere, except photo uploads.
+const PHOTO_UPLOAD = /^\/api\/(admin\/products\/[^/]+\/image|orders\/[^/]+\/proof)$/;
 app.use('/api/*', (c, next) =>
   bodyLimit({
     maxSize: PHOTO_UPLOAD.test(c.req.path) ? 6 * 1024 * 1024 : 100 * 1024,
@@ -73,8 +71,6 @@ app.use('/api/*', (c, next) =>
 // Better Auth: sign-in, sign-up, codes, sessions, admin user actions.
 app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(applyExpoOrigin(c.req.raw)));
 
-// Paynow posts here from its own servers (no session, no Origin). Verified by hash.
-app.route('/api/payments', paymentRoutes);
 
 // Everything else: attach the signed-in user and block cross-site writes.
 app.use('/api/*', async (c, next) => {
@@ -103,7 +99,7 @@ app.get('/health', async (c) => {
     return c.json({
       ok: true,
       db: 'up',
-      payments: paynowMode,
+      payments: 'ecocash',
       images: imageStorageMode,
       email: emailDeliveryMode(),
     });
@@ -159,9 +155,6 @@ app.get('/images/:id', async (c) => {
     'Content-Security-Policy': "default-src 'none'; sandbox",
   });
 });
-
-// Paynow's return URL (only used by web checkout); send people somewhere friendly.
-app.get('/payments/return', (c) => c.text('Payment received. You can return to the LoveNest app.'));
 
 app.get('/', (c) => c.json({ name: 'LoveNest API', ok: true }));
 

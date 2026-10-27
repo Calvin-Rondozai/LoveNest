@@ -17,7 +17,13 @@ import { font, radii, spacing, primary } from '../theme';
 import { RootStackParamList } from '../navigation/types';
 
 const PAYMENT_LABEL = { ecocash: 'EcoCash' } as const;
-const PAYMENT_STATUS = { pending: 'Awaiting payment', paid: 'Paid', failed: 'Payment failed', refunded: 'Refunded' } as const;
+const PAYMENT_STATUS = {
+  pending: 'Awaiting payment',
+  pending_verification: 'Payment pending verification',
+  paid: 'Paid',
+  failed: 'Payment failed',
+  refunded: 'Refunded',
+} as const;
 
 export const OrderDetailScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -150,7 +156,7 @@ export const OrderDetailScreen = () => {
           </View>
         </View>
 
-        {order.status !== 'cancelled' && (order.paymentStatus === 'pending' || order.paymentStatus === 'failed') ? (
+        {order.status !== 'cancelled' && (order.paymentStatus === 'pending' || order.paymentStatus === 'pending_verification' || order.paymentStatus === 'failed') ? (
           <Button
             label="Pay Now"
             icon="lock-closed-outline"

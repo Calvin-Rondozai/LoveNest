@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequest } from '../lib/api';
+import { API_URL } from '../config';
 import { OrderStatus, PaymentStatus, STATUS_INFO, fulfillmentStarted } from '../data/orderStatus';
 import { useNotifications } from './notifications';
 import { onSignOut } from './auth';
@@ -20,6 +21,7 @@ export type Order = {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   paymentError: string | null;
+  paymentProof: string | null;
   items: OrderItem[];
   subtotal: number;
   deliveryFee: number;
@@ -53,9 +55,8 @@ type OrdersState = {
   createOrder: (input: CheckoutRequest, idempotencyKey: string) => Promise<Order>;
   /** Loads the latest orders and notifies the customer about anything that changed. */
   refresh: () => Promise<void>;
-  /** Asks the server to re-check a mobile money payment with Paynow. */
   checkPayment: (orderId: string) => Promise<Order>;
-  retryPayment: (orderId: string, method: PaymentMethod, phone: string) => Promise<Order>;
+  uploadProof: (orderId: string, uri: string) => Promise<Order>;
   cancelOrder: (orderId: string) => Promise<Order>;
 };
 
@@ -76,11 +77,17 @@ export const useOrders = create<OrdersState>()(
   persist(
     (set, get) => {
       /** Replaces one order in the list, notifying about changes. */
+      const abs = (o: Order): Order => ({
+        ...o,
+        paymentProof: o.paymentProof && o.paymentProof.startsWith('/') ? `${API_URL}${o.paymentProof}` : o.paymentProof,
+      });
+
       const upsert = (next: Order) => {
-        const previous = get().orders.find((o) => o.id === next.id);
-        notifyChanges(previous, next);
-        set((s) => ({ orders: previous ? s.orders.map((o) => (o.id === next.id ? next : o)) : [next, ...s.orders] }));
-        return next;
+        const resolved = abs(next);
+        const previous = get().orders.find((o) => o.id === resolved.id);
+        notifyChanges(previous, resolved);
+        set((s) => ({ orders: previous ? s.orders.map((o) => (o.id === resolved.id ? resolved : o)) : [resolved, ...s.orders] }));
+        return resolved;
       };
 
       return {
@@ -102,8 +109,9 @@ export const useOrders = create<OrdersState>()(
           try {
             const { orders } = await apiRequest<{ orders: Order[] }>('/api/orders');
             const previous = new Map(get().orders.map((o) => [o.id, o]));
-            orders.forEach((o) => notifyChanges(previous.get(o.id), o));
-            set({ orders });
+            const resolved = orders.map(abs);
+            resolved.forEach((o) => notifyChanges(previous.get(o.id), o));
+            set({ orders: resolved });
           } finally {
             set({ refreshing: false });
           }
@@ -114,11 +122,10 @@ export const useOrders = create<OrdersState>()(
           return upsert(order);
         },
 
-        retryPayment: async (orderId, method, phone) => {
-          const { order } = await apiRequest<{ order: Order }>(`/api/orders/${orderId}/pay`, {
-            method: 'POST',
-            body: { paymentMethod: method, paymentPhone: phone },
-          });
+        uploadProof: async (orderId, uri) => {
+          const form = new FormData();
+          form.append('image', { uri, name: 'proof.jpg', type: 'image/jpeg' } as unknown as Blob);
+          const { order } = await apiRequest<{ order: Order }>(`/api/orders/${orderId}/proof`, { method: 'POST', body: form });
           return upsert(order);
         },
 

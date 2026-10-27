@@ -48,14 +48,14 @@ export function detectImageType(bytes: Uint8Array): string | null {
 export const isAllowedImageType = (type: string) => ALLOWED.has(type);
 
 /**
- * Saves a product photo. Database photos get a relative URL (/images/<id>) so they work from
- * any address the API is reached at; the app and dashboard resolve it against the API URL.
+ * Saves a photo in the same place as product pictures (Cloudinary if configured, otherwise
+ * the LoveNest database). Relative URLs (/images/<id>) are resolved against the API URL.
  */
-export async function storeProductImage(bytes: Uint8Array, type: string): Promise<StoredImage> {
+export async function storeProductImage(bytes: Uint8Array, type: string, folder = 'lovenest/products'): Promise<StoredImage> {
   if (useCloudinary) {
     const result = await new Promise<{ secure_url: string; public_id: string }>((resolve, reject) => {
       const stream = cloudinary.uploader.upload_stream(
-        { folder: 'lovenest/products', resource_type: 'image', transformation: [{ width: 1600, height: 1600, crop: 'limit' }] },
+        { folder, resource_type: 'image', transformation: [{ width: 1280, height: 1280, crop: 'limit' }] },
         (error, res) => (error || !res ? reject(error ?? new Error('Upload failed')) : resolve(res)),
       );
       stream.end(Buffer.from(bytes));

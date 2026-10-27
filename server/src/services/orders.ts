@@ -4,8 +4,7 @@ import { order, orderEvent, orderItem, product, user } from '../db/schema.js';
 import { ApiError, conflict, notFound } from '../lib/errors.js';
 import { deliveryFeeCentsFor, DELIVERY_CITY } from '../lib/delivery-fee.js';
 import { canTransition, STATUS_LABEL, type OrderStatus } from '../lib/order-status.js';
-import { initiateMobilePayment, pollPayment, type MobileMethod, type StatusResult } from '../lib/paynow.js';
-import { localZimNumber } from '../lib/validation.js';
+import { deleteProductImage, storeProductImage } from '../lib/storage.js';
 import { orderDto } from './serializers.js';
 
 export type CheckoutInput = {
@@ -18,7 +17,7 @@ export type CheckoutInput = {
   instructions: string;
   giftMessage: string;
   paymentMethod: 'ecocash';
-  paymentPhone: string; // E.164 EcoCash number
+  paymentPhone?: string;
 };
 
 type Customer = { id: string; email: string };
@@ -128,7 +127,7 @@ export async function createOrder(customer: Customer, input: CheckoutInput, idem
             instructions: input.instructions,
             giftMessage: input.giftMessage,
             idempotencyKey,
-            paymentPhone: input.paymentPhone,
+            paymentPhone: input.paymentPhone ?? null,
           })
           .returning({ id: order.id });
         await tx.insert(orderItem).values(
@@ -148,96 +147,51 @@ export async function createOrder(customer: Customer, input: CheckoutInput, idem
     }
   }
   if (!orderId) throw new ApiError(503, 'try_again', 'Could not create your order. Please try again.');
-
-  try {
-    await startMobilePayment(orderId, customer, input.paymentPhone, input.paymentMethod);
-  } catch {
-    await db
-      .update(order)
-      .set({ paymentStatus: 'failed', paymentError: 'Payment could not be started. Please try again.' })
-      .where(eq(order.id, orderId));
-  }
   return (await loadOrder({ id: orderId })).dto;
 }
 
 // ---------- payments ----------
 
-/** Sends the EcoCash approval prompt to the customer's phone. */
-export async function startMobilePayment(orderId: string, customer: Customer, phoneE164: string, method: MobileMethod) {
-  const { order: o } = await loadOrder({ id: orderId, userId: customer.id });
+/** Customer uploads one EcoCash confirmation screenshot. Replaces any previous proof. */
+export async function submitPaymentProof(orderId: string, userId: string, bytes: Uint8Array, type: string) {
+  const { order: o } = await loadOrder({ id: orderId, userId });
   if (o.status === 'cancelled') throw conflict('order_cancelled', 'This order was cancelled.');
   if (o.paymentStatus === 'paid') throw conflict('already_paid', 'This order is already paid.');
 
-  const result = await initiateMobilePayment({
-    reference: o.orderNumber,
-    amountCents: o.totalCents,
-    phone: localZimNumber(phoneE164),
-    method,
-    customerEmail: customer.email,
-  });
-
+  const stored = await storeProductImage(bytes, type, 'lovenest/payments');
   await db
     .update(order)
-    .set(
-      result.ok
-        ? { paymentMethod: method, paymentPhone: phoneE164, paymentStatus: 'pending', paymentError: null, paynowPollUrl: result.pollUrl }
-        : { paymentMethod: method, paymentPhone: phoneE164, paymentStatus: 'failed', paymentError: result.error },
-    )
+    .set({
+      paymentStatus: 'pending_verification',
+      paymentError: null,
+      paymentProofUrl: stored.url,
+      paymentProofPublicId: stored.publicId,
+    })
     .where(eq(order.id, o.id));
-
-  return result.ok ? { instructions: result.instructions } : { error: result.error };
+  await deleteProductImage(o.paymentProofPublicId);
+  return (await loadOrder({ id: o.id, userId })).dto;
 }
 
-const lastPolled = new Map<string, number>();
-
-/** Re-checks a pending mobile money payment with Paynow (at most every 3 seconds per order). */
-export async function refreshPayment(orderId: string, userId?: string) {
-  const { order: o } = await loadOrder({ id: orderId, userId });
-  if (o.paymentStatus === 'pending' && o.paynowPollUrl) {
-    const now = Date.now();
-    if (now - (lastPolled.get(o.id) ?? 0) >= 3000) {
-      lastPolled.set(o.id, now);
-      try {
-        await applyPaymentStatus(await pollPayment(o.paynowPollUrl));
-      } catch {
-        // Paynow unreachable: keep the order pending; the result URL or a later poll will catch up.
-      }
-    }
-  }
-  return (await loadOrder({ id: orderId, userId })).dto;
-}
-
-/**
- * Applies a verified Paynow status to the matching order. Idempotent: replays and
- * out-of-order messages cannot move a paid order backwards.
- */
-export async function applyPaymentStatus(status: StatusResult) {
-  const [o] = await db.select().from(order).where(eq(order.orderNumber, status.reference));
-  if (!o) return { applied: false, reason: 'unknown_reference' as const };
-
-  if (status.outcome === 'paid') {
-    const expected = (o.totalCents / 100).toFixed(2);
-    if (Number(status.amount).toFixed(2) !== expected) {
-      // Never mark paid on an amount mismatch; flag for a human to review.
-      await db.update(order).set({ paymentError: `Amount mismatch: paid ${status.amount}, expected ${expected}.` }).where(eq(order.id, o.id));
-      return { applied: false, reason: 'amount_mismatch' as const };
-    }
-    if (o.paymentStatus !== 'paid') {
-      await db
-        .update(order)
-        .set({ paymentStatus: 'paid', paymentError: null, paidAt: new Date(), paynowReference: status.paynowReference || o.paynowReference })
-        .where(eq(order.id, o.id));
-    }
-    return { applied: true };
+/** Admin confirms EcoCash was received. The order moves to Confirmed. */
+export async function approvePayment(orderId: string, adminId: string) {
+  const { order: o } = await loadOrder({ id: orderId });
+  if (o.status === 'cancelled') throw conflict('order_cancelled', 'This order was cancelled.');
+  if (o.paymentStatus === 'paid') return (await loadOrder({ id: o.id })).dto;
+  if (o.paymentStatus !== 'pending_verification') {
+    throw conflict('no_proof', 'Wait until the customer uploads a payment screenshot.');
   }
 
-  if (o.paymentStatus === 'paid' && status.outcome !== 'refunded') return { applied: false, reason: 'already_paid' as const };
-  if (status.outcome === 'failed') {
-    await db.update(order).set({ paymentStatus: 'failed', paymentError: 'The payment was cancelled or declined.' }).where(eq(order.id, o.id));
-  } else if (status.outcome === 'refunded') {
-    await db.update(order).set({ paymentStatus: 'refunded' }).where(eq(order.id, o.id));
-  }
-  return { applied: true };
+  await db.transaction(async (tx) => {
+    const paid = await tx
+      .update(order)
+      .set({ paymentStatus: 'paid', paymentError: null, paidAt: new Date(), ...(o.status === 'placed' ? { status: 'confirmed' as const } : {}) })
+      .where(and(eq(order.id, o.id), eq(order.paymentStatus, 'pending_verification')));
+    if (paid.rowsAffected !== 1) throw conflict('stale', 'This order was just updated. Refresh and try again.');
+    if (o.status === 'placed') {
+      await tx.insert(orderEvent).values({ orderId: o.id, status: 'confirmed', note: 'EcoCash payment verified.', createdBy: adminId });
+    }
+  });
+  return (await loadOrder({ id: o.id })).dto;
 }
 
 // ---------- status changes ----------
@@ -245,6 +199,9 @@ export async function applyPaymentStatus(status: StatusResult) {
 /** Admin moves an order one step forward or cancels it. */
 export async function changeStatus(orderId: string, to: OrderStatus, note: string, adminId: string) {
   const { order: o } = await loadOrder({ id: orderId });
+  if (to !== 'cancelled' && o.paymentStatus !== 'paid') {
+    throw conflict('unpaid', 'Confirm the EcoCash payment before progressing this order.');
+  }
   if (!canTransition(o.status, to)) {
     throw conflict('invalid_transition', `This order is ${STATUS_LABEL[o.status].toLowerCase()} and cannot move to "${STATUS_LABEL[to]}".`);
   }

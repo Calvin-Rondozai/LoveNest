@@ -22,10 +22,11 @@ type Options = { method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'; body?: unknown; h
 const TIMEOUT_MS = 20000;
 
 export async function apiRequest<T>(path: string, { method = 'GET', body, headers = {}, auth = true }: Options = {}): Promise<T> {
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), isForm ? 45000 : TIMEOUT_MS);
   const finalHeaders: Record<string, string> = { Accept: 'application/json', ...headers };
-  if (body !== undefined) finalHeaders['Content-Type'] = 'application/json';
+  if (body !== undefined && !isForm) finalHeaders['Content-Type'] = 'application/json';
   if (auth) {
     const cookie = await authClient.getCookie();
     if (cookie) finalHeaders.Cookie = cookie;
@@ -36,7 +37,7 @@ export async function apiRequest<T>(path: string, { method = 'GET', body, header
     res = await fetch(`${API_URL}${path}`, {
       method,
       headers: finalHeaders,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
       credentials: 'omit',
       signal: controller.signal,
     });

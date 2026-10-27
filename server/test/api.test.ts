@@ -139,50 +139,48 @@ describe('checkout', () => {
   });
 });
 
-describe('mobile money (development simulator)', () => {
-  it('requires a Zimbabwe mobile money number', async () => {
-    resetRateLimits();
-    const cookie = await signUp('momo-validate@example.com');
-    const res = await checkout(cookie, { ...delivery, items: [{ productId: products[4]!.id, quantity: 1 }], paymentMethod: 'ecocash', paymentPhone: '+27821234567' });
-    expect(res.status).toBe(400);
+async function uploadProof(cookie: string, orderId: string) {
+  const form = new FormData();
+  form.append('image', new File([PNG], 'proof.png', { type: 'image/png' }));
+  return request(`/api/orders/${orderId}/proof`, {
+    method: 'POST',
+    headers: { cookie, 'x-forwarded-for': freshIp() },
+    body: form,
   });
+}
 
-  it('marks the order paid once Paynow confirms', async () => {
+describe('EcoCash screenshot payment', () => {
+  it('creates an unpaid order and accepts a screenshot', async () => {
     resetRateLimits();
-    vi.useFakeTimers({ toFake: ['Date'] });
     const cookie = await signUp('momo-paid@example.com');
-    const res = await checkout(cookie, { ...delivery, items: [{ productId: products[4]!.id, quantity: 1 }], paymentMethod: 'ecocash', paymentPhone: '0771111111' });
+    const res = await checkout(cookie, { ...delivery, items: [{ productId: products[4]!.id, quantity: 1 }] });
     const { order: o } = await res.json();
     expect(o.paymentStatus).toBe('pending');
     expect(o.paymentMethod).toBe('ecocash');
 
-    vi.setSystemTime(Date.now() + 6000);
-    const polled = await call(`/api/orders/${o.id}/payment`, { cookie });
-    expect(polled.json.order.paymentStatus).toBe('paid');
-    vi.useRealTimers();
+    const proof = await uploadProof(cookie, o.id);
+    expect(proof.status).toBe(200);
+    const body = await proof.json();
+    expect(body.order.paymentStatus).toBe('pending_verification');
+    expect(body.order.paymentProof).toMatch(/^\/images\//);
   });
 
-  it('reports a failed payment and allows a retry', async () => {
+  it('lets an admin approve a screenshot and confirm the order', async () => {
     resetRateLimits();
-    const cookie = await signUp('momo-fail@example.com');
-    const res = await checkout(cookie, { ...delivery, items: [{ productId: products[4]!.id, quantity: 1 }], paymentMethod: 'ecocash', paymentPhone: '0774444444' });
-    const { order: o } = await res.json();
-    expect(o.paymentStatus).toBe('failed');
-    expect(o.status).toBe('placed');
-    expect(o.paymentError).toMatch(/insufficient/i);
+    const cookie = await signUp('momo-approve@example.com');
+    const { order: o } = await (await checkout(cookie, { ...delivery, items: [{ productId: products[4]!.id, quantity: 1 }] })).json();
+    expect((await call(`/api/admin/orders/${o.id}/approve-payment`, { method: 'POST', cookie: adminCookie, body: {} })).status).toBe(409);
 
-    const retry = await call(`/api/orders/${o.id}/pay`, { method: 'POST', cookie, body: { paymentMethod: 'ecocash', paymentPhone: '0771111111' } });
-    expect(retry.status).toBe(200);
-    expect(retry.json.order.paymentStatus).toBe('pending');
+    await uploadProof(cookie, o.id);
+    const approved = await call(`/api/admin/orders/${o.id}/approve-payment`, { method: 'POST', cookie: adminCookie, body: {} });
+    expect(approved.status).toBe(200);
+    expect(approved.json.order.paymentStatus).toBe('paid');
+    expect(approved.json.order.status).toBe('confirmed');
   });
 
-  it('rejects forged Paynow result messages', async () => {
-    const res = await request('/api/payments/paynow/result', {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: 'reference=LNG000000&amount=1.00&status=Paid&hash=FAKE',
-    });
-    expect(res.status).toBe(400);
+  it('exposes the EcoCash merchant number on the public config', async () => {
+    const cfg = await call('/api/config');
+    expect(cfg.json.ecocashMerchant).toMatch(/^07[1-8]\d{7}$/);
   });
 });
 
@@ -199,16 +197,15 @@ describe('admin: orders', () => {
     const cookie = await signUp('lifecycle@example.com', 'Lifecycle Customer');
     const { order: o } = await (await checkout(cookie, { ...delivery, items: [{ productId: products[5]!.id, quantity: 1 }] })).json();
 
-    // EcoCash must be paid before the shop progresses the order in a real shop; here we
-    // confirm payment via the simulator so the lifecycle assertions stay clear.
-    vi.setSystemTime(Date.now() + 6000);
-    const paid = await call(`/api/orders/${o.id}/payment`, { cookie });
-    expect(paid.json.order.paymentStatus).toBe('paid');
+    await uploadProof(cookie, o.id);
+    const approved = await call(`/api/admin/orders/${o.id}/approve-payment`, { method: 'POST', cookie: adminCookie, body: {} });
+    expect(approved.json.order.paymentStatus).toBe('paid');
+    expect(approved.json.order.status).toBe('confirmed');
 
     const skip = await call(`/api/admin/orders/${o.id}/status`, { method: 'POST', cookie: adminCookie, body: { status: 'delivered' } });
     expect(skip.status).toBe(409);
 
-    for (const status of ['confirmed', 'preparing', 'out_for_delivery']) {
+    for (const status of ['preparing', 'out_for_delivery']) {
       const res = await call(`/api/admin/orders/${o.id}/status`, { method: 'POST', cookie: adminCookie, body: { status, note: status === 'out_for_delivery' ? 'Driver Blessing is on the way.' : '' } });
       expect(res.status).toBe(200);
     }

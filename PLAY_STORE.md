@@ -25,14 +25,14 @@ Answer based on what the app collects once the backend is live:
 | Phone number (account) | Yes | No | Account management, App functionality | No |
 | Phone number (recipient) | Yes | Yes (delivery partners) | App functionality | No |
 | Address (delivery) | Yes | Yes (delivery partners) | App functionality | No |
-| Phone number (mobile money payer) | Yes | No | App functionality (payments) | No (required for EcoCash) |
+| Photos (payment confirmation screenshot) | Yes | No | App functionality (payments) | No |
 | Purchase history | Yes | No | App functionality | No |
 | Other user-generated content (gift messages, instructions) | Yes | Yes (delivery partners) | App functionality | Yes |
 | Payment info | No* | n/a | n/a | n/a |
 
-\* Mobile money is processed by Paynow and the operator; LoveNest never sees PINs. Update this if you add card payments.
+\* You send EcoCash to LoveNest's merchant number. LoveNest never sees PINs. Update this if you add card payments.
 
-Google Play does not count transfers to service providers acting on your behalf (Paynow, Render, Turso, Cloudinary) as "sharing", so the Shared column only covers delivery partners.
+Google Play does not count transfers to service providers acting on your behalf (Render, Turso, Cloudinary) as "sharing", so the Shared column only covers delivery partners.
 
 - Data is encrypted in transit: **Yes** (make sure the backend is HTTPS-only).
 - Users can request data deletion: **Yes** (in-app + web URL).

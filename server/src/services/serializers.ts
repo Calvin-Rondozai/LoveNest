@@ -36,6 +36,7 @@ export function orderDto(o: Order, items: OrderItem[], events: OrderEvent[]) {
     paymentMethod: o.paymentMethod,
     paymentStatus: o.paymentStatus,
     paymentError: o.paymentError,
+    paymentProof: o.paymentProofUrl,
     paidAt: o.paidAt?.toISOString() ?? null,
     subtotalCents: o.subtotalCents,
     deliveryFeeCents: o.deliveryFeeCents,

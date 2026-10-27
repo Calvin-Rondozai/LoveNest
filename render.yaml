@@ -43,12 +43,8 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
-      - key: PAYNOW_INTEGRATION_ID
-        sync: false
-      - key: PAYNOW_INTEGRATION_KEY
-        sync: false
-      - key: PAYNOW_AUTH_EMAIL
-        sync: false # only while your Paynow integration is in test mode; remove when live
+      - key: ECOCASH_MERCHANT_NUMBER
+        sync: false # EcoCash receiving number, e.g. 0771234567
       - key: SEED_ADMIN_EMAIL
         sync: false
       - key: SEED_ADMIN_PASSWORD
