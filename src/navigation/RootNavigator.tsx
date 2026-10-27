@@ -17,7 +17,6 @@ import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignUpScreen } from '../screens/auth/SignUpScreen';
 import { ForgotPasswordScreen } from '../screens/auth/ForgotPasswordScreen';
 import { SecurityQuestionScreen } from '../screens/auth/SecurityQuestionScreen';
-import { VerifyOtpScreen } from '../screens/auth/VerifyOtpScreen';
 import { ResetPasswordScreen } from '../screens/auth/ResetPasswordScreen';
 import { LegalScreen } from '../screens/legal/LegalScreen';
 import { DeleteAccountScreen } from '../screens/legal/DeleteAccountScreen';
@@ -81,7 +80,6 @@ export const RootNavigator = () => {
             )}
             <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
             <Stack.Screen name="SecurityQuestion" component={SecurityQuestionScreen} />
-            <Stack.Screen name="VerifyOtp" component={VerifyOtpScreen} />
             <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
           </Stack.Group>
         )}

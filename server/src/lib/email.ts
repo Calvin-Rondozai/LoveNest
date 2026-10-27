@@ -1,22 +1,23 @@
 import { Resend } from 'resend';
-import { env, isProd } from '../env.js';
+import { env } from '../env.js';
 
 export type Email = { to: string; subject: string; text: string; html?: string };
 
-/** Emails "sent" while NODE_ENV=test, so tests can read codes. */
+/** Emails captured while NODE_ENV=test. */
 export const testOutbox: Email[] = [];
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
-/** How outbound mail is delivered right now (for /health and OTP responses). */
+/** How outbound mail is delivered right now (for /health). */
 export function emailDeliveryMode(): 'resend' | 'console' | 'test' {
   if (env.NODE_ENV === 'test') return 'test';
   return resend ? 'resend' : 'console';
 }
 
 /**
- * Sends a transactional email through Resend. Without RESEND_API_KEY, development prints the
- * email to the terminal; production refuses to start without it (see env check below).
+ * Sends a transactional email through Resend when configured. Without RESEND_API_KEY the
+ * message is printed to the terminal. Accounts no longer depend on email; this stays for
+ * optional shop messages later.
  *
  * With Resend's free `onboarding@resend.dev` sender you can only deliver to the email address
  * on your Resend account. Verify your own domain and set EMAIL_FROM before emailing customers.
@@ -83,9 +84,3 @@ function layout(title: string, body: string, bodyIsHtml = false) {
 
 const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
 const maskEmail = (e: string) => e.replace(/^(.).*(@.*)$/, '$1***$2');
-
-if (isProd && !env.RESEND_API_KEY) {
-  // eslint-disable-next-line no-console
-  console.error('RESEND_API_KEY is required in production: email verification codes cannot be delivered without it.');
-  process.exit(1);
-}

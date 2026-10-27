@@ -29,11 +29,6 @@ export const LoginScreen = () => {
   const handleError = (e: unknown) => {
     const err = e as AuthError;
     if (err.code === 'rate_limited' && err.retryAfterMs) lock(err.retryAfterMs);
-    if (err.code === 'email_not_verified') {
-      setLoading(false);
-      navigation.navigate('VerifyOtp', { email: email.trim().toLowerCase(), purpose: 'verify' });
-      return;
-    }
     setErrors({ form: err.code === 'rate_limited' ? undefined : err.message });
     setLoading(false);
   };

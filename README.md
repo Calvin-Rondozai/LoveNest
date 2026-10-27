@@ -21,8 +21,8 @@ LoveNest is a gift-shopping mobile app for Zimbabwe, built with Expo and React N
 - **Order tracking**: My Orders shows each order's status and a progress bar; Order Details shows a step-by-step timeline (Order placed, Confirmed, Being prepared, Out for delivery, Delivered, or Cancelled), notes from the shop, items, delivery details and payment status. An order is only marked **Order placed** after EcoCash payment succeeds; unpaid or failed payments show Awaiting payment or Payment failed. Status changes arrive as in-app notifications. Pull down to refresh.
 
 **Accounts**
-- Email/password sign-up and login. Sign-up collects name, email, phone, password and a **security question**, then emails a **6-digit verification code** before the account can sign in. After the first sign-in, the app stays signed in until you log out, delete the app, or delete the account. New users land on Create Account; Login is shown after logout.
-- Forgot password uses the **security question** chosen at sign-up. Email OTP is only used to verify a new account. Older accounts without a question contact LoveNest on WhatsApp.
+- Email/password sign-up and login. Sign-up collects name, email, phone, password and a **security question**, then signs you in. After the first sign-in, the app stays signed in until you log out, delete the app, or delete the account. New users land on Create Account; Login is shown after logout.
+- Forgot password uses the **security question** chosen at sign-up. Older accounts without a question contact LoveNest on WhatsApp.
 - Signing up requires accepting the Terms and Privacy Policy and confirming age 18+. The accepted version is recorded.
 - Profile: **Edit My Details** (name and phone) and **Change Password**.
 - In-app **Delete Account**, as Google Play requires.
@@ -93,7 +93,7 @@ The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 ### Trying it in development
 
-- **Sign-up**: create an account; the 6-digit email code prints in the server terminal (until Resend is configured). Enter it to verify, then you are signed in.
+- **Sign-up**: create an account and you are signed in straight away.
 - **Password reset**: Forgot password, enter your email, answer the security question you chose at sign-up, then set a new password.
 - **Mobile money**: without Paynow keys the server simulates Paynow (no real EcoCash PIN popup). Pay with `0771111111` to succeed, `0773333333` to cancel or `0774444444` for insufficient balance. With live Paynow keys, EcoCash shows the PIN prompt on the customer's phone.
 - **Onboarding again**: clear the app's storage, or reinstall.
@@ -114,7 +114,7 @@ App.tsx                     Fonts, splash screen and storage loading, theme prov
 src/
   navigation/               Root stack (onboarding → login screens → app) and bottom tabs
   screens/                  Home, Categories (market), Cart, checkout, Orders, Profile, Notifications, Onboarding
-    auth/                   Login, Sign up, Forgot password, Security question, Verify code, Reset password
+    auth/                   Login, Sign up, Forgot password, Security question, Reset password
     legal/                  Legal document viewer, Delete account
   components/               Shared UI: Button, FormField, SelectField, OtpInput, SearchBar, AuthLayout…
   store/                    Zustand stores: auth, cart, checkout, orders, notifications, onboarding, toast
@@ -157,15 +157,14 @@ Typography: **Poppins** for UI and **Pacifico** for script accents. The app icon
 | Database (users, products, orders) | **Turso** (5 GB free), accessed through Drizzle so it can move to Postgres later |
 | Product photos | **Cloudinary** (25 free credits a month, automatic resizing for mobile) |
 | Server (login, payments, admin API) | **Render** free web service, kept awake by an **UptimeRobot** ping |
-| Login | **Better Auth** on that server: email and password, phone on the account, email verification codes, security-question password reset |
+| Login | **Better Auth** on that server: email and password, phone on the account, security-question password reset |
 | Payments | **Paynow** (EcoCash). The integration key stays on the server; orders are only marked paid after the server confirms with Paynow |
-| Emails | **Resend** (3,000 a month, 100 a day) |
 
 Not chosen: Supabase (free projects pause after a week of inactivity), Vercel (free plan bans commercial use), Neon Auth (no official Expo support), and Fly.io, Railway and Koyeb (need a card). When the shop is earning, Render's paid plan (about $7 a month) removes the sleep issue.
 
 ### Status
 
-All six stages are built: accounts, products, orders and payments run on the API in [`server/`](server/README.md), and both the app and the admin dashboard use it. The server README has the step-by-step **Going live** guide (Turso, Resend, Cloudinary, Paynow, Render, UptimeRobot). Deployment is described in `render.yaml`.
+All six stages are built: accounts, products, orders and payments run on the API in [`server/`](server/README.md), and both the app and the admin dashboard use it. The server README has the step-by-step **Going live** guide (Turso, Cloudinary, Paynow, Render, UptimeRobot). Deployment is described in `render.yaml`.
 
 The client-side checks are for user experience only. Before launch, the backend **must**:
 - own the order lifecycle: accept status changes from admins only, allow just "next step" or "cancel", and record each change with a timestamp and optional note;
@@ -193,6 +192,10 @@ The source code is licensed under the [Apache License 2.0](LICENSE).
 The **LoveNest name, logo and brand images are not covered** by that licence and remain all rights reserved. See [`NOTICE`](NOTICE). Forks must use their own branding.
 
 ## Changelog
+
+### 2026-10-27 (sign in after Create Account)
+- Create Account signs you in immediately. There is no email verification code and the app no longer calls Resend for sign-up.
+- Privacy Policy and Terms updated: no verification emails, Resend is not a processor. `LEGAL_VERSION` is 2026-10-27.
 
 ### 2026-10-27 (Create Account on Render)
 - The production API trusts Expo native origins (`lovenest://`, `exp://`) so Create Account from a development build works against the deployed Render backend. Metro LAN `http://` origins are still rewritten to the app scheme and are not trusted as websites.

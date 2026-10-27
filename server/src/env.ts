@@ -26,9 +26,9 @@ const schema = z.object({
   /** Deep-link scheme of the mobile app (app.json "scheme"). */
   APP_SCHEME: z.string().regex(/^[a-z][a-z0-9+.-]*$/).default('lovenest'),
   /** Current Terms/Privacy version (LEGAL_VERSION in the app's src/legal/content.ts). */
-  LEGAL_VERSION: z.string().default('2026-10-21'),
+  LEGAL_VERSION: z.string().default('2026-10-27'),
 
-  // Email (Resend). Without Resend, codes are logged in development.
+  // Email (Resend). Optional: accounts do not send mail.
   RESEND_API_KEY: optional,
   EMAIL_FROM: z.string().default('LoveNest <onboarding@resend.dev>'),
 

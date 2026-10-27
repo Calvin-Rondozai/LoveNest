@@ -24,13 +24,9 @@ export type User = {
 export type AuthErrorCode =
   | 'invalid_credentials'
   | 'email_taken'
-  | 'email_not_verified'
   | 'rate_limited'
   | 'network'
   | 'suspended'
-  | 'code_invalid'
-  | 'code_expired'
-  | 'code_locked'
   | 'session_expired'
   | 'cancelled'
   | 'wrong_answer'
@@ -40,13 +36,9 @@ export type AuthErrorCode =
 const MESSAGES: Record<AuthErrorCode, string> = {
   invalid_credentials: 'Incorrect email or password',
   email_taken: 'An account with this email already exists',
-  email_not_verified: 'Verify your email with the code we sent you before signing in.',
   rate_limited: 'Too many attempts. Please wait a few minutes and try again.',
   network: "Can't reach LoveNest right now. Check your connection and try again.",
   suspended: 'This account is suspended. Contact LoveNest support.',
-  code_invalid: 'Incorrect code, please try again',
-  code_expired: 'This code has expired. Request a new one.',
-  code_locked: 'Too many wrong codes. Request a new one.',
   session_expired: 'For your security, please sign out, sign in again and retry.',
   cancelled: 'Cancelled',
   wrong_answer: 'That answer does not match. Please try again.',
@@ -73,10 +65,6 @@ function fromServer(error: BetterAuthError, fallback: AuthErrorCode = 'unknown')
   if (status === 429) return new AuthError('rate_limited', 60_000);
   if (code.includes('BANNED')) return new AuthError('suspended', undefined, message);
   if (code.includes('USER_ALREADY_EXISTS')) return new AuthError('email_taken');
-  if (code.includes('EMAIL_NOT_VERIFIED') || code.includes('NOT_VERIFIED')) return new AuthError('email_not_verified');
-  if (code === 'INVALID_OTP') return new AuthError('code_invalid');
-  if (code === 'OTP_EXPIRED') return new AuthError('code_expired');
-  if (code === 'TOO_MANY_ATTEMPTS') return new AuthError('code_locked');
   if (code.includes('SESSION') && (code.includes('FRESH') || code.includes('EXPIRED'))) return new AuthError('session_expired');
   if (code === 'INVALID_EMAIL_OR_PASSWORD' || code === 'INVALID_PASSWORD' || status === 401) return new AuthError('invalid_credentials');
   if (status === 403 && message) return new AuthError('suspended', undefined, message);
@@ -100,10 +88,6 @@ const toAuthError = (e: unknown): AuthError => {
   if (e instanceof TypeError) return new AuthError('network');
   return new AuthError('unknown');
 };
-
-async function sendOtp(email: string) {
-  await apiRequest('/api/otp/email-verification', { method: 'POST', body: { email }, auth: false });
-}
 
 type ServerUser = {
   id: string;
@@ -138,7 +122,7 @@ type AuthState = {
   /** Re-checks the stored session with the server at startup. */
   restoreSession: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  /** Creates the account and emails a verification code. Does not sign the user in yet. */
+  /** Creates the account and signs the user in. */
   signUp: (
     name: string,
     email: string,
@@ -148,10 +132,6 @@ type AuthState = {
     securityQuestion: string,
     securityAnswer: string,
   ) => Promise<void>;
-  /** Confirms the email code after sign-up (or after a blocked sign-in). Signs the user in. */
-  verifyEmailCode: (email: string, code: string) => Promise<void>;
-  /** Sends a fresh email-verification code. */
-  requestEmailVerification: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   lookupRecoveryQuestion: (email: string) => Promise<{ question: string }>;
   resetPassword: (email: string, answer: string, password: string) => Promise<void>;
@@ -204,13 +184,6 @@ export const useAuth = create<AuthState>()(
             await recordAttempt(`login:${email}`, POLICIES.login);
             await recordAttempt(`login:${DEVICE}`, POLICIES.loginDevice);
           }
-          if (err.code === 'email_not_verified') {
-            try {
-              await sendOtp(email);
-            } catch (sendErr) {
-              throw toAuthError(sendErr);
-            }
-          }
           throw err;
         }
       },
@@ -218,9 +191,10 @@ export const useAuth = create<AuthState>()(
       signUp: async (rawName, rawEmail, rawPhone, password, termsVersion, securityQuestion, securityAnswer) => {
         try {
           await assertNotLimited(`signup:${DEVICE}`);
+          const email = normalize(rawEmail);
           const phone = toE164(rawPhone) ?? rawPhone.trim();
-          const { error } = await authClient.signUp.email({
-            email: normalize(rawEmail),
+          const { data, error } = await authClient.signUp.email({
+            email,
             password,
             name: sanitize(rawName),
             phone,
@@ -230,46 +204,15 @@ export const useAuth = create<AuthState>()(
           } as Parameters<typeof authClient.signUp.email>[0] & { securityQuestion: string; securityAnswer: string });
           if (error) throw fromServer(error);
           await recordAttempt(`signup:${DEVICE}`, POLICIES.signUp);
-          // Send the code through our own route so Resend failures are not hidden.
-          await sendOtp(normalize(rawEmail));
-        } catch (e) {
-          throw toAuthError(e);
-        }
-      },
-
-      requestEmailVerification: async (rawEmail) => {
-        const email = normalize(rawEmail);
-        try {
-          await assertNotLimited(`reset:${email}`);
-          await sendOtp(email);
-          await recordAttempt(`reset:${email}`, POLICIES.resetRequest);
-        } catch (e) {
-          throw toAuthError(e);
-        }
-      },
-
-      verifyEmailCode: async (rawEmail, code) => {
-        const email = normalize(rawEmail);
-        try {
-          await assertNotLimited(`otp:${email}`);
-          const { data, error } = await authClient.emailOtp.verifyEmail({ email, otp: code });
-          if (error || !data) throw error ? fromServer(error, 'code_invalid') : new AuthError('code_invalid');
-          clearAttempts(`otp:${email}`);
-          const session = await authClient.getSession();
-          if (session.data?.user) {
-            set({ user: toUser(session.data.user as ServerUser), hasSignedInOnDevice: true });
+          if (data?.user) {
+            set({ user: toUser(data.user as ServerUser), hasSignedInOnDevice: true });
             return;
           }
-          // Some builds return the user on verifyEmail without a separate session fetch.
-          if ((data as { user?: ServerUser }).user) {
-            set({ user: toUser((data as { user: ServerUser }).user), hasSignedInOnDevice: true });
-            return;
-          }
-          throw new AuthError('unknown', undefined, 'Email verified. Please sign in.');
+          const signedIn = await authClient.signIn.email({ email, password });
+          if (signedIn.error || !signedIn.data) throw fromServer(signedIn.error, 'invalid_credentials');
+          set({ user: toUser(signedIn.data.user as ServerUser), hasSignedInOnDevice: true });
         } catch (e) {
-          const err = toAuthError(e);
-          if (err.code === 'code_invalid' || err.code === 'code_locked') await recordAttempt(`otp:${email}`, POLICIES.otpVerify);
-          throw err;
+          throw toAuthError(e);
         }
       },
 

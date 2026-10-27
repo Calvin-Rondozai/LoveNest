@@ -25,7 +25,6 @@ export const POLICIES = {
   loginDevice: { maxAttempts: 15, windowMs: 15 * MINUTE, lockoutMs: 15 * MINUTE, maxLockoutMs: 60 * MINUTE },
   signUp: { maxAttempts: 3, windowMs: 60 * MINUTE, lockoutMs: 30 * MINUTE },
   resetRequest: { maxAttempts: 3, windowMs: 15 * MINUTE, lockoutMs: 15 * MINUTE },
-  otpVerify: { maxAttempts: 5, windowMs: 15 * MINUTE, lockoutMs: 15 * MINUTE },
   placeOrder: { maxAttempts: 3, windowMs: 5 * MINUTE, lockoutMs: 5 * MINUTE },
 } satisfies Record<string, RateLimitPolicy>;
 

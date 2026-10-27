@@ -74,7 +74,6 @@ export const SignUpScreen = () => {
     setLoading(true);
     try {
       await signUp(name, email, phone, password, LEGAL_VERSION, questionId, answer);
-      navigation.navigate('VerifyOtp', { email: email.trim().toLowerCase(), purpose: 'verify' });
     } catch (e) {
       handleError(e);
     }

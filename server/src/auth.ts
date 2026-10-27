@@ -1,22 +1,14 @@
 import { betterAuth } from 'better-auth';
 import { createAuthMiddleware, APIError } from 'better-auth/api';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
-import { admin, emailOTP } from 'better-auth/plugins';
+import { admin } from 'better-auth/plugins';
 import { expo } from '@better-auth/expo';
 import { eq } from 'drizzle-orm';
 import { db } from './db/client.js';
 import * as schema from './db/schema.js';
 import { env, isProd } from './env.js';
-import { codeEmail, sendEmail } from './lib/email.js';
 import { toE164 } from './lib/validation.js';
 import { hashAnswer, isSecurityQuestionId, validateAnswer } from './lib/security-question.js';
-
-const OTP_PURPOSE = {
-  'forget-password': 'reset your password',
-  'sign-in': 'sign in',
-  'email-verification': 'verify your email address',
-  'change-email': 'confirm your new email address',
-} as const;
 
 export const auth = betterAuth({
   appName: 'LoveNest',
@@ -53,14 +45,8 @@ export const auth = betterAuth({
     enabled: true,
     minPasswordLength: 8,
     maxPasswordLength: 128,
-    requireEmailVerification: true,
+    requireEmailVerification: false,
     revokeSessionsOnPasswordReset: true,
-  },
-
-  // After email-OTP verification, create a session so the app (and tests) can
-  // continue without a separate sign-in. verify-email returns token: null otherwise.
-  emailVerification: {
-    autoSignInAfterVerification: true,
   },
 
   session: {
@@ -88,12 +74,6 @@ export const auth = betterAuth({
     customRules: {
       '/sign-in/email': { window: 15 * 60, max: 5 },
       '/sign-up/email': { window: 60 * 60, max: 5 },
-      '/email-otp/send-verification-otp': { window: 15 * 60, max: 3 },
-      '/email-otp/request-password-reset': { window: 15 * 60, max: 3 },
-      '/forget-password/email-otp': { window: 15 * 60, max: 3 },
-      '/email-otp/check-verification-otp': { window: 15 * 60, max: 10 },
-      '/email-otp/verify-email': { window: 15 * 60, max: 10 },
-      '/email-otp/reset-password': { window: 15 * 60, max: 5 },
       '/change-password': { window: 15 * 60, max: 5 },
       '/update-user': { window: 15 * 60, max: 10 },
       '/delete-user': { window: 15 * 60, max: 5 },
@@ -184,19 +164,6 @@ export const auth = betterAuth({
 
   plugins: [
     admin({ defaultRole: 'user', adminRoles: ['admin'], bannedUserMessage: 'This account is suspended. Contact LoveNest support.' }),
-    emailOTP({
-      otpLength: 6,
-      expiresIn: 10 * 60,
-      allowedAttempts: 5,
-      // Do not auto-send on sign-up: Better Auth swallows Resend errors. The app
-      // calls /api/otp/email-verification, which waits for delivery.
-      overrideDefaultEmailVerification: false,
-      sendVerificationOnSignUp: false,
-      async sendVerificationOTP({ email, otp, type }) {
-        const { text, html } = codeEmail(otp, OTP_PURPOSE[type as keyof typeof OTP_PURPOSE] ?? 'continue');
-        await sendEmail({ to: email, subject: `${otp} is your LoveNest code`, text, html });
-      },
-    }),
     expo(),
   ],
 });

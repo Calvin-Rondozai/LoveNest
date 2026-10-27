@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { call, freshIp, RECOVERY } from './helpers.js';
 import { applyExpoOrigin } from '../src/middleware/auth.js';
-import { testOutbox } from '../src/lib/email.js';
 import { seed } from '../src/db/seed.js';
 import { db } from '../src/db/client.js';
 import { category, product } from '../src/db/schema.js';
@@ -49,28 +48,15 @@ describe('Stage 1: auth wiring', () => {
   const email = 'tendai@example.com';
   const password = 'Lovenest2026';
 
-  it('signs up a customer, emails a code, and signs them in after verification', async () => {
-    testOutbox.length = 0;
-    const { status } = await call('/api/auth/sign-up/email', {
+  it('signs up a customer and signs them in immediately', async () => {
+    const signedUp = await call('/api/auth/sign-up/email', {
       method: 'POST',
       ip: freshIp(),
       body: { email, password, name: 'Tendai Moyo', phone: '0771234567', acceptedTermsVersion: '2026-10-09', ...RECOVERY },
     });
-    expect(status).toBe(200);
+    expect(signedUp.status).toBe(200);
 
-    const sent = await call('/api/otp/email-verification', { method: 'POST', ip: freshIp(), body: { email } });
-    expect(sent.status).toBe(200);
-    const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
-    expect(code).toMatch(/^\d{6}$/);
-
-    const verified = await call('/api/auth/email-otp/verify-email', {
-      method: 'POST',
-      ip: freshIp(),
-      body: { email, otp: code },
-    });
-    expect(verified.status).toBe(200);
-
-    const session = await call('/api/auth/get-session', { cookie: verified.cookie });
+    const session = await call('/api/auth/get-session', { cookie: signedUp.cookie });
     expect(session.json.user).toMatchObject({
       email,
       name: 'Tendai Moyo',
@@ -78,7 +64,6 @@ describe('Stage 1: auth wiring', () => {
       role: 'user',
       mustChangePassword: false,
       acceptedTermsVersion: '2026-10-09',
-      emailVerified: true,
     });
   });
 
@@ -186,49 +171,24 @@ describe('Stage 1: auth wiring', () => {
     expect(res.json.error.code).toBe('recovery_unavailable');
   });
 
-  it('sends a verification code through the LoveNest OTP route', async () => {
-    const email = `otp-route-${Date.now()}@example.com`;
-    testOutbox.length = 0;
-    await call('/api/auth/sign-up/email', {
-      method: 'POST',
-      ip: freshIp(),
-      body: { email, password: 'Customer2026', name: 'Otp Route', phone: '0771234567', acceptedTermsVersion: '2026-10-09', ...RECOVERY },
-    });
-    const sent = await call('/api/otp/email-verification', { method: 'POST', ip: freshIp(), body: { email } });
-    expect(sent.status).toBe(200);
-    const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
-    expect(code).toMatch(/^\d{6}$/);
-
-    const verified = await call('/api/auth/email-otp/verify-email', { method: 'POST', ip: freshIp(), body: { email, otp: code } });
-    expect(verified.status).toBe(200);
-  });
-
   it('lets a signed-in user update name and phone', async () => {
     const email = `profile-${Date.now()}@example.com`;
-    testOutbox.length = 0;
-    await call('/api/auth/sign-up/email', {
+    const signedUp = await call('/api/auth/sign-up/email', {
       method: 'POST',
       ip: freshIp(),
       body: { email, password: 'Customer2026', name: 'Before Name', phone: '0771234567', acceptedTermsVersion: '2026-10-09', ...RECOVERY },
     });
-    await call('/api/otp/email-verification', { method: 'POST', ip: freshIp(), body: { email } });
-    const code = testOutbox.at(-1)?.subject.match(/\d{6}/)?.[0];
-    const verified = await call('/api/auth/email-otp/verify-email', {
-      method: 'POST',
-      ip: freshIp(),
-      body: { email, otp: code },
-    });
-    expect(verified.status).toBe(200);
+    expect(signedUp.status).toBe(200);
 
     const updated = await call('/api/auth/update-user', {
       method: 'POST',
       ip: freshIp(),
-      cookie: verified.cookie,
+      cookie: signedUp.cookie,
       body: { name: 'After Name', phone: '0779988776' },
     });
     expect(updated.status).toBe(200);
 
-    const session = await call('/api/auth/get-session', { cookie: verified.cookie ?? updated.cookie });
+    const session = await call('/api/auth/get-session', { cookie: signedUp.cookie ?? updated.cookie });
     expect(session.json.user).toMatchObject({
       name: 'After Name',
       phone: '+263779988776',

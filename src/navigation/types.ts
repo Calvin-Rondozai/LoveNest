@@ -15,8 +15,6 @@ export type RootStackParamList = {
   SignUp: undefined;
   ForgotPassword: { email?: string } | undefined;
   SecurityQuestion: { email: string; question: string };
-  /** Confirm email after sign-up or a blocked sign-in. */
-  VerifyOtp: { email: string; purpose: 'verify' };
   ResetPassword: { email: string; answer: string };
   Tabs: NavigatorScreenParams<TabParamList>;
   ProductDetail: { productId: string };
