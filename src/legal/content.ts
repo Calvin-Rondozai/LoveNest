@@ -53,17 +53,17 @@ const privacy: LegalDocument = {
         'Account information: your name, email address, phone number and password. Passwords are stored by our servers in hashed form and are never visible to our staff. After you create an account you sign in with your email and password. We do not send an email verification code.',
         'Security question: when you create an account you choose a question from a preset list and give a short answer. We store the question you chose and a hashed form of your answer. We never store the answer in readable form, and staff cannot read it.',
         'Order and delivery information: the items you order, recipient name, recipient phone number, delivery address (currently Mutare), delivery instructions and any gift message you write. Checkout may pre-fill your account name and phone as the recipient; you can change those details before paying.',
-        'Payment information: you send EcoCash to our shop number from your phone. We store a screenshot of your EcoCash confirmation so we can match the payment to your order. We never ask for or store your EcoCash PIN. The PIN is entered in EcoCash, not inside the LoveNest app.',
-        'Support communications: messages you send us, including through WhatsApp. Tapping a WhatsApp button opens WhatsApp with a suggested message; nothing is sent until you choose to send it, and your use of WhatsApp is governed by WhatsApp’s own privacy policy.',
+        'Payment information: you send EcoCash to our shop number from your phone. After you pay, you choose a screenshot of the EcoCash confirmation from your photo library. We store that screenshot with your order so we can match the money to the order. Authorised administrators can view it to confirm payment. We never ask for or store your EcoCash PIN. The PIN is entered in EcoCash, not inside the LoveNest app.',
+        'Support communications: messages you send us, including through WhatsApp. Tapping a WhatsApp button opens WhatsApp with a suggested message; nothing is sent until you choose to send it, and your use of WhatsApp is governed by WhatsApp\'s own privacy policy.',
         'Technical and security information: when you use our services our servers may log your IP address, device type, operating system, app version, timestamps and failed sign-in attempts, to keep the service secure and prevent fraud.',
-        'Information stored on your device: settings such as light/dark mode, your signed-in session, a copy of your orders and their delivery progress, in-app notifications (such as order updates) and limits on repeated sign-in attempts are stored locally on your device. Signing out keeps these settings; deleting the app removes them.',
+        'Information stored on your device: settings such as light/dark mode, your signed-in session, a copy of your orders and their delivery progress, in-app notifications (such as order updates) and limits on repeated sign-in attempts are stored locally on your device. Signing out keeps these settings; deleting the app removes them. The app asks for photo-library access only when you upload an EcoCash screenshot; we do not scan your other photos.',
       ],
     },
     {
       heading: '3. How we use your information',
       bullets: [
         'To create and manage your account and sign you in, including letting you reset a forgotten password by answering your security question.',
-        'To process, deliver and support your orders, including contacting you or the recipient about a delivery.',
+        'To process, deliver and support your orders, including contacting you or the recipient about a delivery, and checking an EcoCash screenshot against the money we received before we confirm an order.',
         'To send service messages such as order confirmations, delivery progress updates (for example "Out for delivery") and short notes from our team about your order. Delivery progress is shown in the app.',
         'To protect accounts and the service, including limiting repeated sign-in attempts and detecting fraud or abuse.',
         'To meet our legal, tax and accounting obligations.',
@@ -87,7 +87,7 @@ const privacy: LegalDocument = {
     {
       heading: '6. Who we share information with',
       paragraphs: [
-        'Within LoveNest, only authorised administrators can access account, order and product information, through a password-protected admin dashboard, and only to run the service: for example to help with an order, answer a support request, create an account on your behalf, or suspend or delete an account. Administrator access is limited to what is needed for these tasks.',
+        'Within LoveNest, only authorised administrators can access account, order, payment-screenshot and product information, through a password-protected admin dashboard, and only to run the service: for example to verify EcoCash, help with an order, answer a support request, create an account on your behalf, or suspend or delete an account. Administrator access is limited to what is needed for these tasks.',
         'We share personal information outside LoveNest only where needed, and require these parties to protect it:',
       ],
       bullets: [
@@ -109,7 +109,7 @@ const privacy: LegalDocument = {
       bullets: [
         'Account information is kept while your account is active.',
         'When you delete your account, we delete or anonymise your personal information within 30 days.',
-        'Order, payment and invoice records may be kept for longer where tax, accounting or other laws require it, after which they are deleted.',
+        'Order, payment and invoice records, including EcoCash confirmation screenshots, may be kept for longer where tax, accounting or other laws require it, after which they are deleted.',
         'Security logs are kept for a limited period, normally no more than 12 months.',
       ],
     },
@@ -187,14 +187,14 @@ const terms: LegalDocument = {
       bullets: [
         'Prices are shown in US dollars (US$) and include the delivery fee shown at checkout.',
         'Product photos are illustrative. Flowers, cakes and similar items may vary slightly in colour, size or arrangement; we may substitute an item of similar style and equal or greater value if something is unavailable.',
-        'Before paying, you review your items, delivery details and total and confirm they are correct. You may edit delivery details on the confirm step. Completing the payment step is an offer to buy, and a contract is formed when we confirm your order. Delivery is currently available in Mutare only.',
-        'We may refuse or cancel an order, for example if an item is unavailable, a price was shown in error, payment fails, or we suspect fraud. If we cancel after you have paid, we will refund you in full.',
+        'Before paying, you review your items, delivery details and total and confirm they are correct. You may edit delivery details on the confirm step. Sending EcoCash and uploading a confirmation screenshot is an offer to buy. A contract is formed when a LoveNest administrator confirms that the money arrived. Until then the app shows Payment pending verification. Delivery is currently available in Mutare only.',
+        'We may refuse or cancel an order, for example if an item is unavailable, a price was shown in error, payment is not verified, or we suspect fraud. If we cancel after we have received your EcoCash, we will refund you in full.',
       ],
     },
     {
       heading: '5. Payment',
       paragraphs: [
-        'You pay by EcoCash at checkout. The app shows our EcoCash number, the amount and your order reference, then opens EcoCash so you can send the money. You then upload a screenshot of the confirmation. A LoveNest administrator checks that the money arrived before the order is confirmed. LoveNest never asks for your EcoCash PIN. Mobile money payments are also subject to EcoCash terms.',
+        'You pay by EcoCash at checkout. The app shows our EcoCash number, the amount and your order reference, then opens EcoCash send-money (USSD) so you can enter your PIN in EcoCash. You then upload a screenshot of the confirmation from your photo library. LoveNest never asks for your EcoCash PIN. A LoveNest administrator checks the screenshot against EcoCash before the order is confirmed. Mobile money payments are also subject to EcoCash terms.',
         'Delivery fees depend on your order subtotal: US$5 when the subtotal is under US$50, and US$10 when the subtotal is US$50 or more. The fee is shown before you pay.',
       ],
     },
@@ -210,7 +210,9 @@ const terms: LegalDocument = {
     },
     {
       heading: '7. Cancellations, returns and refunds',
-      paragraphs: ['Cancellations, returns and refunds are handled under our Returns & Refunds Policy, which forms part of these Terms.'],
+      paragraphs: [
+        'You may cancel in the app before you upload an EcoCash screenshot. After you upload a screenshot, Cancel Order is no longer shown in the app; contact us on WhatsApp if you need to stop the order. Cancellations, returns and refunds are handled under our Returns & Refunds Policy, which forms part of these Terms.',
+      ],
     },
     {
       heading: '8. Gift messages and your content',
@@ -232,7 +234,7 @@ const terms: LegalDocument = {
       heading: '10. Intellectual property',
       paragraphs: [
         'The LoveNest name, logo, product images and other content we provide are owned by us or our licensors. We grant you a personal, non-transferable, revocable licence to use the app for its intended purpose.',
-        'The app’s source code is made available under the Apache License 2.0. That licence covers the code only; it does not give anyone the right to use the LoveNest name, logo or other brand assets, or to present a modified version as the official LoveNest app.',
+        'The app\'s source code is made available under the Apache License 2.0. That licence covers the code only; it does not give anyone the right to use the LoveNest name, logo or other brand assets, or to present a modified version as the official LoveNest app.',
       ],
     },
     {
@@ -270,8 +272,9 @@ const refunds: LegalDocument = {
     {
       heading: '1. Cancelling an order',
       bullets: [
-        'You can cancel free of charge before your order is prepared or dispatched. Contact us as soon as possible.',
-        'Once an order has been prepared or dispatched it may not be possible to cancel, especially for flowers, cakes and personalised items.',
+        'Before you upload an EcoCash screenshot, you can cancel in the app at no charge. If you already sent EcoCash but have not uploaded a screenshot, contact us on WhatsApp so we can match the transfer and refund you.',
+        'After you upload a screenshot, you cannot cancel in the app. Contact us on WhatsApp. If we have not started preparing the order, we will cancel it. If we have already received the EcoCash, we will refund you as described in section 4.',
+        'Once an order has been prepared or dispatched it may not be possible to cancel, especially for flowers, cakes and personalised items. LoveNest staff may still cancel an order from the shop dashboard when that is necessary, for example if payment cannot be verified.',
       ],
     },
     {
@@ -289,9 +292,10 @@ const refunds: LegalDocument = {
     {
       heading: '4. Refunds',
       bullets: [
-        'Approved refunds are paid to the original EcoCash payment method where possible.',
-        'We aim to process refunds within 7–14 business days of approval.',
+        'Approved refunds are paid back to the EcoCash number that sent the payment, where possible.',
+        'We aim to process refunds within 7 to 14 business days of approval.',
         'Delivery fees are refunded when the order was cancelled before dispatch or the problem was our fault.',
+        'If you cancel in the app before uploading a screenshot, and you did not send EcoCash, nothing is charged.',
       ],
     },
     {

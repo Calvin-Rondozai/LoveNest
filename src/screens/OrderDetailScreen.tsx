@@ -166,7 +166,7 @@ export const OrderDetailScreen = () => {
 
         <Button label="Ask About This Order" icon="logo-whatsapp" variant="outline" onPress={contact} />
 
-        {order.status === 'placed' && order.paymentStatus !== 'paid' ? (
+        {order.status === 'placed' && order.paymentStatus === 'pending' ? (
           <Pressable onPress={confirmCancel} style={styles.devButton} hitSlop={8}>
             <Text style={[styles.cancelText]}>Cancel Order</Text>
           </Pressable>

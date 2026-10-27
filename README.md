@@ -193,6 +193,12 @@ The **LoveNest name, logo and brand images are not covered** by that licence and
 
 ## Changelog
 
+### 2026-10-27 (legal: EcoCash cancel and screenshots)
+- Privacy Policy, Terms of Use and Returns & Refunds now match EcoCash screenshots, admin payment checks, photo-library access, and in-app cancel only before a screenshot is uploaded. `LEGAL_VERSION` stays 2026-10-27.
+
+### 2026-10-27 (hide cancel after proof)
+- Cancel Order is hidden in the app after the EcoCash screenshot is uploaded. The shop can still cancel from the admin dashboard. No legal change.
+
 ### 2026-10-27 (screenshot upload)
 - The app sends the EcoCash screenshot as JSON (base64). React Native fetch cannot attach a gallery file URI, which showed as "Can't reach LoveNest". Multipart upload still works for tests. No legal change.
 

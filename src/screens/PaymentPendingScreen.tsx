@@ -147,7 +147,7 @@ export const PaymentPendingScreen = () => {
 
         <View style={styles.footer}>
           <Button label="View My Orders" variant="outline" icon="" onPress={goToOrders} />
-          {order && order.status === 'placed' && status !== 'paid' ? (
+          {order && order.status === 'placed' && status === 'pending' ? (
             <Pressable onPress={confirmCancel} hitSlop={8} style={styles.cancel}>
               <Text style={styles.cancelText}>Cancel Order</Text>
             </Pressable>
