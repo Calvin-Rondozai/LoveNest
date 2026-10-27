@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthLayout } from '../../components/AuthLayout';
 import { FormField } from '../../components/FormField';
+import { SelectField } from '../../components/SelectField';
 import { Button } from '../../components/Button';
 import { ConsentCheckbox, InlineLink } from '../../components/ConsentCheckbox';
 import { PasswordChecklist } from '../../components/PasswordChecklist';
@@ -14,7 +15,7 @@ import { phoneError, isPhoneValid } from '../../utils/phone';
 import { LEGAL_VERSION } from '../../legal/content';
 import { SECURITY_QUESTIONS, type SecurityQuestionId } from '../../data/securityQuestions';
 import { useTheme } from '../../context/ThemeContext';
-import { font, spacing, radii, primary, danger } from '../../theme';
+import { font, spacing, primary, danger } from '../../theme';
 import { RootStackParamList } from '../../navigation/types';
 
 type Errors = {
@@ -143,37 +144,22 @@ export const SignUpScreen = () => {
         error={errors.confirm}
       />
 
-      <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>Security question</Text>
+      <SelectField
+        label="Security question"
+        value={questionId}
+        options={SECURITY_QUESTIONS}
+        placeholder="Choose a question"
+        error={errors.question}
+        onChange={(id) => setQuestionId(id as SecurityQuestionId)}
+      />
       <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
-        You will answer this question if you forget your password. Choose something only you would know.
+        You will need this answer if you forget your password. Choose something only you would know.
       </Text>
-      {SECURITY_QUESTIONS.map((q) => {
-        const selected = questionId === q.id;
-        return (
-          <Pressable
-            key={q.id}
-            onPress={() => setQuestionId(q.id)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected }}
-            style={[
-              styles.question,
-              {
-                borderColor: errors.question && !questionId ? danger : selected ? primary : colors.border,
-                backgroundColor: colors.surface,
-              },
-            ]}
-          >
-            <Text style={[styles.questionText, { color: colors.text, fontFamily: selected ? font.sansSemi : font.sans }]}>{q.label}</Text>
-          </Pressable>
-        );
-      })}
-      {errors.question ? <Text style={styles.fieldError}>{errors.question}</Text> : null}
       <FormField
-        label="Your answer"
-        icon="create-outline"
+        label="Type your answer"
         value={answer}
         onChangeText={setAnswer}
-        placeholder="A short answer you will remember"
+        placeholder="Type your answer here"
         autoCapitalize="none"
         autoComplete="off"
         maxLength={LIMITS.securityAnswer}
@@ -193,7 +179,7 @@ export const SignUpScreen = () => {
       ) : null}
 
       <Button
-        label={loading ? 'Sending code…' : 'Create Account'}
+        label={loading ? 'Creating account…' : 'Create Account'}
         onPress={submit}
         disabled={busy}
         style={styles.submit}
@@ -215,17 +201,5 @@ const styles = StyleSheet.create({
   formError: { color: danger, fontSize: font.size.sm, fontFamily: font.sansMedium, textAlign: 'center', marginBottom: spacing.md },
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xl },
   footerText: { fontSize: font.size.sm, fontFamily: font.sans },
-  sectionLabel: { fontSize: font.size.xs, fontFamily: font.sansMedium, marginBottom: spacing.xs },
-  sectionHint: { fontSize: font.size.xs, fontFamily: font.sans, marginBottom: spacing.sm },
-  question: {
-    borderWidth: 1,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    marginBottom: spacing.sm,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  questionText: { fontSize: font.size.sm },
-  fieldError: { color: danger, fontSize: font.size.xs, fontFamily: font.sansMedium, marginBottom: spacing.md, marginTop: -spacing.xs },
+  sectionHint: { fontSize: font.size.xs, fontFamily: font.sans, marginTop: -spacing.sm, marginBottom: spacing.md },
 });

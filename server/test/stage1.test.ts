@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { call, freshIp, RECOVERY } from './helpers.js';
+import { applyExpoOrigin } from '../src/middleware/auth.js';
 import { testOutbox } from '../src/lib/email.js';
 import { seed } from '../src/db/seed.js';
 import { db } from '../src/db/client.js';
@@ -79,6 +80,50 @@ describe('Stage 1: auth wiring', () => {
       acceptedTermsVersion: '2026-10-09',
       emailVerified: true,
     });
+  });
+
+  it('maps Expo Metro origins to the app scheme', () => {
+    const mapped = applyExpoOrigin(
+      new Request('http://localhost:3000/api/auth/sign-up/email', {
+        method: 'POST',
+        headers: { origin: 'http://192.168.1.20:8081', 'expo-origin': 'exp://192.168.1.20:8081/--/' },
+      }),
+    );
+    expect(mapped.headers.get('origin')).toBe('lovenest://');
+
+    const website = applyExpoOrigin(
+      new Request('http://localhost:3000/api/auth/sign-up/email', {
+        method: 'POST',
+        headers: { origin: 'https://evil.example', 'expo-origin': 'exp://192.168.1.20:8081/--/' },
+      }),
+    );
+    expect(website.headers.get('origin')).toBe('https://evil.example');
+
+    const expoOnly = applyExpoOrigin(
+      new Request('http://localhost:3000/api/auth/sign-up/email', {
+        method: 'POST',
+        headers: { 'expo-origin': 'exp://192.168.1.20:8081/--/' },
+      }),
+    );
+    expect(expoOnly.headers.get('origin')).toBe('lovenest://');
+  });
+
+  it('accepts sign-up from a development build (Metro Origin plus expo-origin)', async () => {
+    const { status } = await call('/api/auth/sign-up/email', {
+      method: 'POST',
+      ip: freshIp(),
+      origin: 'http://192.168.1.20:8081',
+      headers: { 'expo-origin': 'exp://192.168.1.20:8081/--/' },
+      body: {
+        email: `device-${Date.now()}@example.com`,
+        password: 'Lovenest2026',
+        name: 'Device User',
+        phone: '0771234568',
+        acceptedTermsVersion: '2026-10-09',
+        ...RECOVERY,
+      },
+    });
+    expect(status).toBe(200);
   });
 
   it('rejects a wrong password without saying which part was wrong', async () => {

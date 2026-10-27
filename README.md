@@ -116,7 +116,7 @@ src/
   screens/                  Home, Categories (market), Cart, checkout, Orders, Profile, Notifications, Onboarding
     auth/                   Login, Sign up, Forgot password, Security question, Verify code, Reset password
     legal/                  Legal document viewer, Delete account
-  components/               Shared UI: Button, FormField, OtpInput, SearchBar, AuthLayout…
+  components/               Shared UI: Button, FormField, SelectField, OtpInput, SearchBar, AuthLayout…
   store/                    Zustand stores: auth, cart, checkout, orders, notifications, onboarding, toast
   utils/                    validation, rateLimit, phone, whatsapp
   legal/content.ts          Single source of truth for the Privacy Policy, Terms and Refund Policy
@@ -193,6 +193,18 @@ The source code is licensed under the [Apache License 2.0](LICENSE).
 The **LoveNest name, logo and brand images are not covered** by that licence and remain all rights reserved. See [`NOTICE`](NOTICE). Forks must use their own branding.
 
 ## Changelog
+
+### 2026-10-27 (Create Account on Render)
+- The production API trusts Expo native origins (`lovenest://`, `exp://`) so Create Account from a development build works against the deployed Render backend. Metro LAN `http://` origins are still rewritten to the app scheme and are not trusted as websites.
+- No legal change (same sign-up; origin check only).
+
+### 2026-10-21 (invalid origin)
+- Create Account from a development build no longer fails with Invalid origin. Native Expo origins (including Metro LAN URLs) are treated as the app scheme.
+- No legal change (same sign-up; origin check only).
+
+### 2026-10-21 (security question UI)
+- Create Account uses a dropdown for the security question and a labelled text box for the answer. The button shows Creating account, not Sending code.
+- No legal change (same data as the security-question reset).
 
 ### 2026-10-21 (security question reset)
 - Forgot password no longer emails a reset code. At Create Account you choose a security question and answer; that answer (hashed) is how you reset the password. Email OTP remains for verifying a new account. Accounts without a question (created earlier or by an admin) are directed to WhatsApp.

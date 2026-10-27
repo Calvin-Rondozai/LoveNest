@@ -33,11 +33,10 @@ export const SecurityQuestionScreen = () => {
       subtitle={question}
     >
       <FormField
-        label="Your answer"
-        icon="create-outline"
+        label="Type your answer"
         value={answer}
         onChangeText={setAnswer}
-        placeholder="Answer as you did when you signed up"
+        placeholder="Type your answer here"
         autoCapitalize="none"
         autoComplete="off"
         maxLength={LIMITS.securityAnswer}

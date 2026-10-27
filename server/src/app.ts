@@ -15,7 +15,7 @@ import { env, isProd } from './env.js';
 import { ApiError } from './lib/errors.js';
 import { imageStorageMode, loadImage } from './lib/storage.js';
 import { paynowMode } from './lib/paynow.js';
-import { csrfGuard } from './middleware/auth.js';
+import { applyExpoOrigin, csrfGuard } from './middleware/auth.js';
 import { catalogRoutes } from './routes/catalog.js';
 import { orderRoutes } from './routes/orders.js';
 import { paymentRoutes } from './routes/payments.js';
@@ -72,7 +72,7 @@ app.use('/api/*', (c, next) =>
 );
 
 // Better Auth: sign-in, sign-up, codes, sessions, admin user actions.
-app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
+app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(applyExpoOrigin(c.req.raw)));
 
 // Paynow posts here from its own servers (no session, no Origin). Verified by hash.
 app.route('/api/payments', paymentRoutes);

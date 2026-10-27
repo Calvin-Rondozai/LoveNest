@@ -27,8 +27,26 @@ export const auth = betterAuth({
   trustedOrigins: [
     env.BETTER_AUTH_URL, // the admin dashboard is served from the API's own origin
     ...env.ADMIN_ORIGINS,
+    // Native app and Expo Go / development builds (including those talking to Render).
     `${env.APP_SCHEME}://`,
-    ...(isProd ? [] : ['exp://**']),
+    `${env.APP_SCHEME}://**`,
+    'exp://',
+    'exp://**',
+    'exps://',
+    'exps://**',
+    // LAN Metro Origin is rewritten to the app scheme before this list is used.
+    // Keep HTTP wildcards off production so a website cannot CSRF the API.
+    ...(isProd
+      ? []
+      : [
+          'http://localhost:*',
+          'http://localhost:**',
+          'http://127.0.0.1:*',
+          'http://10.0.2.2:*',
+          'http://192.168.*.*:*',
+          'http://10.*.*.*:*',
+          'http://172.*.*.*:*',
+        ]),
   ],
 
   emailAndPassword: {
@@ -84,6 +102,9 @@ export const auth = betterAuth({
 
   advanced: {
     useSecureCookies: isProd,
+    // Native Expo clients send Metro LAN origins. Those are rewritten to lovenest://
+    // before this check; in local development skip the check entirely.
+    disableCSRFCheck: !isProd,
     // The dashboard is same-origin with the API, so Lax cookies work and resist CSRF.
     defaultCookieAttributes: { sameSite: 'lax' },
   },

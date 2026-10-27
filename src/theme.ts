@@ -17,6 +17,8 @@ export type Palette = {
   surfaceAlt: string;
   text: string;
   textMuted: string;
+  /** Fainter than textMuted; used for empty-field hints. */
+  placeholder: string;
   border: string;
   primary: string;
   primaryDark: string;
@@ -37,6 +39,7 @@ export const palettes: Record<'light' | 'dark', Palette> = {
     surfaceAlt: '#FBE6E9',
     text: '#1A1416',
     textMuted: '#8C8386',
+    placeholder: '#C9B8BB',
     border: '#F0DCDE',
     primary,
     primaryDark,
@@ -48,6 +51,7 @@ export const palettes: Record<'light' | 'dark', Palette> = {
     surfaceAlt: '#2A171B',
     text: '#FFFFFF',
     textMuted: '#BBA9AC',
+    placeholder: '#6E5C60',
     border: '#33272A',
     primary,
     primaryDark,
