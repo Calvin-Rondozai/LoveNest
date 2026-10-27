@@ -193,6 +193,9 @@ The **LoveNest name, logo and brand images are not covered** by that licence and
 
 ## Changelog
 
+### 2026-10-27 (order screenshot columns)
+- Startup now adds `payment_proof_url` and `payment_proof_public_id` if they are missing. Drizzle had skipped migration 0005 because its journal timestamp was older than the previous migration, so Pay and the admin order list returned 500. No legal change.
+
 ### 2026-10-27 (EcoCash screenshot)
 - Checkout opens EcoCash USSD (`*153*1*1*shop number*amount#`), then the customer uploads a confirmation screenshot. Screenshots are stored with product photos. Admins approve payment in the dashboard (**To verify**), which confirms the order.
 - Privacy Policy and Terms updated for EcoCash screenshots and the removal of Paynow. `LEGAL_VERSION` is 2026-10-27.

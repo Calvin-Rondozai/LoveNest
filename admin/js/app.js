@@ -321,15 +321,19 @@
   // ---------- data ----------
 
   async function loadAll() {
-    try {
-      var results = await Promise.all([api.listUsers(), api.listProducts(), api.listOrders(), api.loadCategories()]);
-      state.users = results[0];
-      state.products = results[1];
-      state.orders = results[2];
-      fillCategorySelects();
-    } catch (err) {
-      handleError(err);
+    var failed = null;
+    async function one(load, apply) {
+      try { apply(await load()); }
+      catch (err) { failed = err; }
     }
+    await Promise.all([
+      one(function () { return api.listUsers(); }, function (v) { state.users = v; }),
+      one(function () { return api.listProducts(); }, function (v) { state.products = v; }),
+      one(function () { return api.listOrders(); }, function (v) { state.orders = v; }),
+      one(function () { return api.loadCategories(); }, function () {}),
+    ]);
+    fillCategorySelects();
+    if (failed) handleError(failed);
   }
 
   function render() {
