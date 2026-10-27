@@ -193,6 +193,9 @@ The **LoveNest name, logo and brand images are not covered** by that licence and
 
 ## Changelog
 
+### 2026-10-27 (screenshot upload)
+- The app sends the EcoCash screenshot as JSON (base64). React Native fetch cannot attach a gallery file URI, which showed as "Can't reach LoveNest". Multipart upload still works for tests. No legal change.
+
 ### 2026-10-27 (order screenshot columns)
 - Startup now adds `payment_proof_url` and `payment_proof_public_id` if they are missing. Drizzle had skipped migration 0005 because its journal timestamp was older than the previous migration, so Pay and the admin order list returned 500. No legal change.
 

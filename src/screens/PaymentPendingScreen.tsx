@@ -29,6 +29,7 @@ export const PaymentPendingScreen = () => {
   const showToast = useToast((s) => s.show);
 
   const [localUri, setLocalUri] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const mounted = useRef(true);
   useEffect(() => () => void (mounted.current = false), []);
@@ -57,19 +58,26 @@ export const PaymentPendingScreen = () => {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      quality: 0.5,
+      quality: 0.4,
+      base64: true,
     });
-    if (!result.canceled && result.assets[0]?.uri) setLocalUri(result.assets[0].uri);
+    const asset = result.canceled ? null : result.assets[0];
+    if (!asset?.uri || !asset.base64) {
+      if (!result.canceled) showToast('Could not read that screenshot. Please choose it again.', 4000);
+      return;
+    }
+    setLocalUri(asset.uri);
+    setImageBase64(asset.base64);
   };
 
   const submit = async () => {
-    if (!localUri) {
+    if (!imageBase64) {
       showToast('Choose a screenshot of the EcoCash confirmation first.', 4000);
       return;
     }
     setBusy(true);
     try {
-      await uploadProof(orderId, localUri);
+      await uploadProof(orderId, imageBase64);
       showToast('Screenshot sent. We will confirm the payment shortly.', 3000);
     } catch (e) {
       showToast(e instanceof ApiRequestError ? e.message : 'Could not upload the screenshot.', 4000);
@@ -132,7 +140,7 @@ export const PaymentPendingScreen = () => {
             <>
               <Button label="Open EcoCash again" icon="call-outline" variant="outline" onPress={dial} style={styles.wide} />
               <Button label={localUri ? 'Choose a different screenshot' : 'Choose screenshot'} icon="image-outline" variant="outline" onPress={pick} style={styles.wide} />
-              <Button label={busy ? 'Uploading…' : 'Submit screenshot'} onPress={submit} disabled={busy || !localUri} style={styles.wide} />
+              <Button label={busy ? 'Uploading…' : 'Submit screenshot'} onPress={submit} disabled={busy || !imageBase64} style={styles.wide} />
             </>
           )}
         </ScrollView>

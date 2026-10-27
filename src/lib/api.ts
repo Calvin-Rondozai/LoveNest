@@ -23,8 +23,9 @@ const TIMEOUT_MS = 20000;
 
 export async function apiRequest<T>(path: string, { method = 'GET', body, headers = {}, auth = true }: Options = {}): Promise<T> {
   const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
+  const isUpload = isForm || (typeof body === 'object' && body !== null && 'image' in body);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), isForm ? 45000 : TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), isUpload ? 60000 : TIMEOUT_MS);
   const finalHeaders: Record<string, string> = { Accept: 'application/json', ...headers };
   if (body !== undefined && !isForm) finalHeaders['Content-Type'] = 'application/json';
   if (auth) {

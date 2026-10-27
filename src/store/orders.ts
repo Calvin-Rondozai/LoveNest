@@ -56,7 +56,7 @@ type OrdersState = {
   /** Loads the latest orders and notifies the customer about anything that changed. */
   refresh: () => Promise<void>;
   checkPayment: (orderId: string) => Promise<Order>;
-  uploadProof: (orderId: string, uri: string) => Promise<Order>;
+  uploadProof: (orderId: string, imageBase64: string) => Promise<Order>;
   cancelOrder: (orderId: string) => Promise<Order>;
 };
 
@@ -122,10 +122,11 @@ export const useOrders = create<OrdersState>()(
           return upsert(order);
         },
 
-        uploadProof: async (orderId, uri) => {
-          const form = new FormData();
-          form.append('image', { uri, name: 'proof.jpg', type: 'image/jpeg' } as unknown as Blob);
-          const { order } = await apiRequest<{ order: Order }>(`/api/orders/${orderId}/proof`, { method: 'POST', body: form });
+        uploadProof: async (orderId, imageBase64) => {
+          const { order } = await apiRequest<{ order: Order }>(`/api/orders/${orderId}/proof`, {
+            method: 'POST',
+            body: { image: imageBase64 },
+          });
           return upsert(order);
         },
 

@@ -165,6 +165,16 @@ describe('EcoCash screenshot payment', () => {
     expect(body.order.paymentProof).toMatch(/^\/images\//);
   });
 
+  it('accepts a JSON base64 screenshot from the app', async () => {
+    resetRateLimits();
+    const cookie = await signUp('momo-json@example.com');
+    const { order: o } = await (await checkout(cookie, { ...delivery, items: [{ productId: products[4]!.id, quantity: 1 }] })).json();
+    const b64 = Buffer.from(PNG).toString('base64');
+    const proof = await call(`/api/orders/${o.id}/proof`, { method: 'POST', cookie, body: { image: b64 } });
+    expect(proof.status).toBe(200);
+    expect(proof.json.order.paymentStatus).toBe('pending_verification');
+  });
+
   it('lets an admin approve a screenshot and confirm the order', async () => {
     resetRateLimits();
     const cookie = await signUp('momo-approve@example.com');

@@ -26,6 +26,29 @@ const checkoutSchema = z.object({
 
 const IDEMPOTENCY_RE = /^[A-Za-z0-9_-]{16,64}$/;
 
+/** Multipart from the admin tests, or JSON `{ image: base64 }` from the app (RN fetch cannot send file URIs). */
+async function screenshotBytes(c: { req: { header: (n: string) => string | undefined; formData: () => Promise<FormData>; json: () => Promise<unknown> } }) {
+  const contentType = c.req.header('content-type') ?? '';
+  if (contentType.includes('multipart/form-data')) {
+    const file = (await c.req.formData()).get('image');
+    if (!(file instanceof Blob)) throw badRequest('Attach a screenshot in the "image" field.');
+    if (file.size > MAX_IMAGE_BYTES) throw badRequest('Use a screenshot smaller than 5 MB.');
+    return new Uint8Array(await file.arrayBuffer());
+  }
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    throw badRequest('Attach a screenshot in the "image" field.');
+  }
+  const raw = typeof body === 'object' && body && 'image' in body && typeof body.image === 'string' ? body.image : '';
+  const b64 = raw.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '');
+  if (!b64) throw badRequest('Attach a screenshot in the "image" field.');
+  const buf = Buffer.from(b64, 'base64');
+  if (!buf.byteLength || buf.byteLength > MAX_IMAGE_BYTES) throw badRequest('Use a screenshot smaller than 5 MB.');
+  return new Uint8Array(buf);
+}
+
 /** Customer order endpoints. Every query is scoped to the signed-in user. */
 export const orderRoutes = new Hono<AppEnv>()
   .use('*', requireUser)
@@ -50,11 +73,7 @@ export const orderRoutes = new Hono<AppEnv>()
     return c.json({ order: dto });
   })
   .post('/:id/proof', rateLimit('payment-proof', { max: 8, windowMs: 15 * 60_000 }), async (c) => {
-    const form = await c.req.formData();
-    const file = form.get('image');
-    if (!(file instanceof File)) throw badRequest('Attach a screenshot in the "image" field.');
-    if (file.size > MAX_IMAGE_BYTES) throw badRequest('Use a screenshot smaller than 5 MB.');
-    const bytes = new Uint8Array(await file.arrayBuffer());
+    const bytes = await screenshotBytes(c);
     const type = detectImageType(bytes);
     if (!type || !isAllowedImageType(type)) throw badRequest('Choose a JPG, PNG or WebP screenshot.');
     try {
