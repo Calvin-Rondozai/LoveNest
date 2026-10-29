@@ -136,6 +136,7 @@ type AuthState = {
   ) => Promise<void>;
   signOut: () => Promise<void>;
   lookupRecoveryQuestion: (email: string) => Promise<{ question: string }>;
+  verifyRecoveryAnswer: (email: string, answer: string) => Promise<void>;
   resetPassword: (email: string, answer: string, password: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   updateProfile: (fields: { name: string; phone: string }) => Promise<void>;
@@ -235,6 +236,15 @@ export const useAuth = create<AuthState>()(
           const data = await apiRequest<{ question: string }>('/api/recovery/lookup', { method: 'POST', body: { email }, auth: false });
           await recordAttempt(`reset:${email}`, POLICIES.resetRequest);
           return { question: data.question };
+        } catch (e) {
+          throw toAuthError(e);
+        }
+      },
+
+      verifyRecoveryAnswer: async (rawEmail, answer) => {
+        const email = normalize(rawEmail);
+        try {
+          await apiRequest('/api/recovery/verify', { method: 'POST', body: { email, answer }, auth: false });
         } catch (e) {
           throw toAuthError(e);
         }

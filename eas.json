@@ -1,0 +1,28 @@
+{
+  "cli": {
+    "version": ">= 18.4.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {
+      "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "ANDROID_PACKAGE": "com.lovenest.gifts",
+        "EXPO_PUBLIC_API_URL": "https://lovenest-api-1tb2.onrender.com"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

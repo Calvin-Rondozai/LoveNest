@@ -141,6 +141,21 @@ describe('Stage 1: auth wiring', () => {
     expect(lookup.status).toBe(200);
     expect(lookup.json.questionId).toBe(RECOVERY.securityQuestion);
 
+    const wrongCheck = await call('/api/recovery/verify', {
+      method: 'POST',
+      ip: freshIp(),
+      body: { email, answer: 'wrong-answer' },
+    });
+    expect(wrongCheck.status).toBe(400);
+    expect(wrongCheck.json.error.code).toBe('wrong_answer');
+
+    const rightCheck = await call('/api/recovery/verify', {
+      method: 'POST',
+      ip: freshIp(),
+      body: { email, answer: ' misty ' },
+    });
+    expect(rightCheck.status).toBe(200);
+
     const wrong = await call('/api/recovery/reset', {
       method: 'POST',
       ip: freshIp(),

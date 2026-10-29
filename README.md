@@ -89,7 +89,7 @@ npx expo run:android            # builds the debug APK, installs it on the runni
 npx expo start                  # afterwards, just start the dev server and open the LoveNest app
 ```
 
-The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. A release APK is `android/app/build/outputs/apk/release/app-release.apk` (`npx expo run:android --variant release`). The `android/` folder is generated and not committed. Builds use `ANDROID_PACKAGE` from `.env`; `com.lovenest.app` is a development placeholder until you choose the permanent name.
+The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. A release APK is `android/app/build/outputs/apk/release/app-release.apk` (`npx expo run:android --variant release`). The `android/` folder is generated and not committed. The Play Store package name is `com.lovenest.gifts`. Production AABs are built with `npx eas-cli build -p android --profile production`.
 
 ### Trying it in development
 
@@ -180,7 +180,7 @@ See [`PLAY_STORE.md`](PLAY_STORE.md) for the full launch checklist.
 
 All legal text lives in [`src/legal/content.ts`](src/legal/content.ts) and is shown in the app and on the generated web pages.
 
-1. Fill in the `[[placeholders]]` in `LEGAL_INFO` (business name, address, email, URLs).
+1. Contact details live in `LEGAL_INFO` (`src/legal/content.ts`): LoveNest, 7928 Area 16 Dangamvura, Mutare, Zimbabwe, moseskatsande89@gmail.com.
 2. When the app's behaviour changes what data is collected or how orders work, **update the policies and bump `LEGAL_VERSION` and `EFFECTIVE_DATE`**.
 3. Run `npm run legal:site` and re-publish `legal-site/`.
 4. Have a lawyer review the text before launch.
@@ -192,6 +192,13 @@ The source code is licensed under the [Apache License 2.0](LICENSE).
 The **LoveNest name, logo and brand images are not covered** by that licence and remain all rights reserved. See [`NOTICE`](NOTICE). Forks must use their own branding.
 
 ## Changelog
+
+### 2026-10-29 (Play package name)
+- Android package name is `com.lovenest.gifts`. EAS production builds an AAB pointed at the Render API. No legal change.
+
+### 2026-10-29 (security answer check and contact details)
+- Reset password now checks the security-question answer on the server before the new-password screen. A wrong answer stays on that screen.
+- Privacy Policy, Terms and Refunds use LoveNest, 7928 Area 16 Dangamvura, Mutare, Zimbabwe and moseskatsande89@gmail.com. `LEGAL_VERSION` is 2026-10-29.
 
 ### 2026-10-27 (legal: EcoCash cancel and screenshots)
 - Privacy Policy, Terms of Use and Returns & Refunds now match EcoCash screenshots, admin payment checks, photo-library access, and in-app cancel only before a screenshot is uploaded. `LEGAL_VERSION` stays 2026-10-27.

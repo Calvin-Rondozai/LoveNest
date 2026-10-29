@@ -10,6 +10,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.lovenest.gifts",
       "adaptiveIcon": {
         "backgroundColor": "#FFF7F7",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -45,6 +46,11 @@
         }
       ]
     ],
-    "scheme": "lovenest"
+    "scheme": "lovenest",
+    "extra": {
+      "eas": {
+        "projectId": "832b91e7-9162-4600-94aa-f25c954edabc"
+      }
+    }
   }
 }

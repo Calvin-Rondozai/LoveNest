@@ -4,25 +4,23 @@
 //
 // Keep this file free of runtime imports; the site builder loads it standalone.
 //
-// IMPORTANT: Have these reviewed by a lawyer before launch, and fill in every
-// `[[…]]` placeholder in LEGAL_INFO. Bump LEGAL_VERSION whenever the text
-// changes materially so users can be asked to accept the new version.
+// IMPORTANT: Have these reviewed by a lawyer before launch. Bump LEGAL_VERSION
+// whenever the text changes materially so users can be asked to accept the new version.
 
-export const LEGAL_VERSION = '2026-10-27';
-export const EFFECTIVE_DATE = '27 October 2026';
+export const LEGAL_VERSION = '2026-10-29';
+export const EFFECTIVE_DATE = '29 October 2026';
 
 export const LEGAL_INFO = {
   appName: 'LoveNest Gifts',
-  businessName: '[[LoveNest]]',
-  address: '[[79 Livingstone, Mutare, Zimbabwe]]',
-  email: '[[moses.lovenest@gmail.com]]',
+  businessName: 'LoveNest',
+  address: '7928 Area 16 Dangamvura, Mutare, Zimbabwe',
+  email: 'moseskatsande89@gmail.com',
   whatsapp: '+263 78 582 3025',
   country: 'Zimbabwe',
   /** Public URLs where the web versions are hosted (needed for the Play Console). */
-  // Served by the API at /legal/ once deployed, e.g. https://lovenest-api.onrender.com/legal/privacy.html
-  privacyUrl: '[[https://lovenest-api-1tb2.onrender.com/legal/privacy.html]]',
-  termsUrl: '[[https://lovenest-api-1tb2.onrender.com/legal/terms.html]]',
-  deleteAccountUrl: '[[https://lovenest-api-1tb2.onrender.com/legal/delete-account.html]]',
+  privacyUrl: 'https://lovenest-api-1tb2.onrender.com/legal/privacy.html',
+  termsUrl: 'https://lovenest-api-1tb2.onrender.com/legal/terms.html',
+  deleteAccountUrl: 'https://lovenest-api-1tb2.onrender.com/legal/delete-account.html',
 };
 
 export type LegalSection = { heading: string; paragraphs?: string[]; bullets?: string[] };

@@ -4,7 +4,7 @@ What's needed to publish LoveNest, beyond the code. Items marked **[x]** are alr
 
 ## Legal & policy
 
-- [ ] Fill in every `[[placeholder]]` in `LEGAL_INFO` (`src/legal/content.ts`): business name, address, email, URLs.
+- [x] Fill in `LEGAL_INFO` (`src/legal/content.ts`): LoveNest, 7928 Area 16 Dangamvura, Mutare, Zimbabwe, moseskatsande89@gmail.com, and the Render `/legal` URLs.
 - [ ] Have a lawyer review the Privacy Policy, Terms of Use and Returns & Refunds Policy.
 - [ ] Run `npm run legal:site` and host `legal-site/` publicly (GitHub Pages / Netlify are free). Put the URLs back into `LEGAL_INFO`.
 - [ ] Play Console → App content → **Privacy policy**: paste the hosted `privacy.html` URL.
@@ -40,7 +40,7 @@ Google Play does not count transfers to service providers acting on your behalf 
 
 ## Other Play Console requirements
 
-- [ ] **Package name**: set `android.package` in `app.json` (e.g. `com.yourcompany.lovenest`). It can never change after the first upload.
+- [x] **Package name**: `com.lovenest.gifts` (`android.package` in `app.json`). It can never change after the first upload.
 - [ ] **Content rating** questionnaire.
 - [ ] **Target audience**: 18+ (matches the Terms). Avoids Families policy requirements.
 - [ ] **Store listing**: 512×512 icon (`assets/play-store-icon-512.png`, done), 1024×500 feature graphic, at least 2 phone screenshots, short + full description.

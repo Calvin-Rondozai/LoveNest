@@ -11,11 +11,23 @@ import { ApiError, badRequest } from '../lib/errors.js';
 import type { AppEnv } from '../app.js';
 
 const lookupSchema = z.object({ email: emailAddress });
-const resetSchema = z.object({
-  email: emailAddress,
-  answer: z.string(),
-  password,
-});
+const answerSchema = z.object({ email: emailAddress, answer: z.string() });
+const resetSchema = answerSchema.extend({ password });
+
+async function userForRecovery(email: string) {
+  const [row] = await db
+    .select({ id: user.id, securityAnswerHash: user.securityAnswerHash, banned: user.banned })
+    .from(user)
+    .where(eq(user.email, email));
+  return row;
+}
+
+function requireMatchingAnswer(row: Awaited<ReturnType<typeof userForRecovery>>, answer: string) {
+  if (!row || row.banned || !answersMatch(answer, row.securityAnswerHash)) {
+    throw new ApiError(400, 'wrong_answer', 'That answer does not match. Please try again.');
+  }
+  return row;
+}
 
 export const recoveryRoutes = new Hono<AppEnv>()
   .post('/lookup', rateLimit('recovery-lookup', { max: 5, windowMs: 15 * 60_000 }), async (c) => {
@@ -31,18 +43,19 @@ export const recoveryRoutes = new Hono<AppEnv>()
     return c.json({ questionId: row.securityQuestion, question: securityQuestionLabel(row.securityQuestion) });
   })
 
+  .post('/verify', rateLimit('recovery-verify', { max: 8, windowMs: 15 * 60_000 }), async (c) => {
+    const input = await parseBody(c, answerSchema);
+    const answerProblem = validateAnswer(input.answer);
+    if (answerProblem) throw badRequest(answerProblem, { answer: answerProblem });
+    requireMatchingAnswer(await userForRecovery(input.email), input.answer);
+    return c.json({ ok: true });
+  })
+
   .post('/reset', rateLimit('recovery-reset', { max: 5, windowMs: 15 * 60_000 }), async (c) => {
     const input = await parseBody(c, resetSchema);
     const answerProblem = validateAnswer(input.answer);
     if (answerProblem) throw badRequest(answerProblem, { answer: answerProblem });
-
-    const [row] = await db
-      .select({ id: user.id, securityAnswerHash: user.securityAnswerHash, banned: user.banned })
-      .from(user)
-      .where(eq(user.email, input.email));
-    if (!row || row.banned || !answersMatch(input.answer, row.securityAnswerHash)) {
-      throw new ApiError(400, 'wrong_answer', 'That answer does not match. Please try again.');
-    }
+    const row = requireMatchingAnswer(await userForRecovery(input.email), input.answer);
 
     const hash = await hashPassword(input.password);
     await db
